@@ -16294,13 +16294,24 @@
       return isUpdated;
     }
   };
+  function $createNumberNode(text) {
+    return new NumberNode(text);
+  }
+  function register(editor) {
+    const removeTransform = editor.registerNodeTransform(import_lexical.TextNode, (node) => {
+      const textContent = node.getTextContent();
+      const maybeNumberContent = Number(textContent);
+      console.log("carl", 0, maybeNumberContent);
+      if (typeof maybeNumberContent === "number" && !isNaN(maybeNumberContent)) {
+        node.replace($createNumberNode(textContent));
+      }
+    });
+    return removeTransform;
+  }
 
   // src/maple-editor.js
   function initPlainText(editor, initialEditorState) {
     return import_plain_text.default.registerPlainText(editor);
-  }
-  function initMarkdownShortCuts(editor, transformers = import_markdown.default.TRANSFORMERS) {
-    return import_markdown.default.registerMarkdownShortcuts(editor, transformers);
   }
   customElements.define(
     "maple-editor",
@@ -16349,12 +16360,11 @@
             });
           }
           this.#editor.setRootElement(this.#rootEl);
-          this.#editorListeners.push(initMarkdownShortCuts(this.#editor));
           this.#editorListeners.push(initPlainText(this.#editor));
+          this.#editorListeners.push(register(this.#editor));
           this.#editor.registerUpdateListener(({ editorState }) => {
             editorState.read(() => {
               const root = import_lexical2.default.$getRoot();
-              console.log(root.getTextContent());
             });
           });
         });

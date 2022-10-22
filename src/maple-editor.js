@@ -9,7 +9,7 @@ import mark from "@lexical/mark";
 import hashtag from "@lexical/hashtag";
 import code from "@lexical/code";
 import markdown from "@lexical/markdown";
-import { NumberNode } from "./Maple/lexical";
+import { NumberNode, register } from "./Maple/lexical";
 
 function initPlainText(editor, initialEditorState) {
   return plainText.registerPlainText(editor);
@@ -47,7 +47,7 @@ customElements.define(
             // onError: console.error,
             onError: (err) =>
               this.dispatchEvent(
-                new CustomEvent("maple-editor-error", { detail: err })
+                new CustomEvent("maple-editor-error", { detail: err }),
               ),
             nodes: [
               lexical.LineBreakNode,
@@ -73,8 +73,9 @@ customElements.define(
         }
         this.#editor.setRootElement(this.#rootEl);
 
-        this.#editorListeners.push(initMarkdownShortCuts(this.#editor));
+        // this.#editorListeners.push(initMarkdownShortCuts(this.#editor))
         this.#editorListeners.push(initPlainText(this.#editor));
+        this.#editorListeners.push(register(this.#editor));
 
         this.#editor.registerUpdateListener(({ editorState }) => {
           editorState.read(() => {
@@ -83,7 +84,7 @@ customElements.define(
             // );
             // console.log(toMarkdownString);
             const root = lexical.$getRoot();
-            console.log(root.getTextContent());
+            // console.log(root.getTextContent())
           });
         });
       });
@@ -95,5 +96,5 @@ customElements.define(
       });
       this.#editor.setRootElement(null);
     }
-  }
+  },
 );

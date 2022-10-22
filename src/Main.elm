@@ -61,7 +61,7 @@ view model =
 viewModel : Model -> Element Msg
 viewModel model =
     column
-        []
+        [ padding 16 ]
         [ text "Maple Lang"
         , Maple.Editor.view
             { onError = EditorError

@@ -35,3 +35,16 @@ export function $createNumberNode(text) {
 export function $isNumberNode(node) {
   return node instanceof NumberNode;
 }
+
+export function register(editor) {
+  const removeTransform = editor.registerNodeTransform(TextNode, (node) => {
+    const textContent = node.getTextContent();
+    const maybeNumberContent = Number(textContent);
+    console.log("carl", 0, maybeNumberContent);
+
+    if (typeof maybeNumberContent === "number" && !isNaN(maybeNumberContent)) {
+      node.replace($createNumberNode(textContent));
+    }
+  });
+  return removeTransform;
+}

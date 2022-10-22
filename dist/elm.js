@@ -1,4 +1,4 @@
-// elm-watch hot {"version":"1.0.2","webSocketPort":52051}
+// elm-watch hot {"version":"1.0.2","webSocketPort":59314}
 "use strict";
 (() => {
   // node_modules/tiny-decoders/index.mjs
@@ -494,10 +494,10 @@ ${variant}`;
   var VERSION = "1.0.2";
   var TARGET_NAME = "Maple lang editor";
   var INITIAL_ELM_COMPILED_TIMESTAMP = Number(
-    "1666282596612"
+    "1666463860408"
   );
   var ORIGINAL_COMPILATION_MODE = "standard";
-  var WEBSOCKET_PORT = "52051";
+  var WEBSOCKET_PORT = "59314";
   var CONTAINER_ID = "elm-watch";
   var DEBUG = String("false") === "true";
   var SEND_KEY_DO_NOT_USE_ALL_THE_TIME = Symbol(
@@ -13255,6 +13255,24 @@ var $elm$core$Basics$composeL = F3(
 	});
 var $mdgriffith$elm_ui$Internal$Model$unstyled = A2($elm$core$Basics$composeL, $mdgriffith$elm_ui$Internal$Model$Unstyled, $elm$core$Basics$always);
 var $mdgriffith$elm_ui$Element$html = $mdgriffith$elm_ui$Internal$Model$unstyled;
+var $mdgriffith$elm_ui$Internal$Model$PaddingStyle = F5(
+	function (a, b, c, d, e) {
+		return {$: 'PaddingStyle', a: a, b: b, c: c, d: d, e: e};
+	});
+var $mdgriffith$elm_ui$Internal$Flag$padding = $mdgriffith$elm_ui$Internal$Flag$flag(2);
+var $mdgriffith$elm_ui$Element$padding = function (x) {
+	var f = x;
+	return A2(
+		$mdgriffith$elm_ui$Internal$Model$StyleClass,
+		$mdgriffith$elm_ui$Internal$Flag$padding,
+		A5(
+			$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+			'p-' + $elm$core$String$fromInt(x),
+			f,
+			f,
+			f,
+			f));
+};
 var $mdgriffith$elm_ui$Internal$Model$Text = function (a) {
 	return {$: 'Text', a: a};
 };
@@ -13297,7 +13315,10 @@ var $author$project$Maple$Editor$view = function (config) {
 var $author$project$Main$viewModel = function (model) {
 	return A2(
 		$mdgriffith$elm_ui$Element$column,
-		_List_Nil,
+		_List_fromArray(
+			[
+				$mdgriffith$elm_ui$Element$padding(16)
+			]),
 		_List_fromArray(
 			[
 				$mdgriffith$elm_ui$Element$text('Maple Lang'),
