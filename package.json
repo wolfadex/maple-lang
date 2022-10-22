@@ -1,0 +1,41 @@
+{
+  "name": "maple-lang",
+  "version": "1.0.0",
+  "description": "A very basic template for an [Elm](https://elm-lang.org/) project, using [Nix](https://nixos.org/) and [direnv](https://direnv.net/).",
+  "main": "index.js",
+  "scripts": {
+    "dev": "run-pty run-pty.json",
+    "dev:elm": "elm-watch hot",
+    "dev:js": "esbuild --bundle src/index.js --outdir=dist --watch",
+    "dev:server": "http-server dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wolfadex/elm-nix.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wolfadex/elm-nix/issues"
+  },
+  "homepage": "https://github.com/wolfadex/elm-nix#readme",
+  "devDependencies": {
+    "elm-watch": "^1.0.2",
+    "esbuild": "^0.15.12",
+    "http-server": "^14.1.1",
+    "run-pty": "^4.0.2"
+  },
+  "dependencies": {
+    "@lexical/code": "^0.5.0",
+    "@lexical/hashtag": "^0.5.0",
+    "@lexical/link": "^0.5.0",
+    "@lexical/list": "^0.5.0",
+    "@lexical/mark": "^0.5.0",
+    "@lexical/markdown": "^0.5.0",
+    "@lexical/overflow": "^0.5.0",
+    "@lexical/plain-text": "^0.5.0",
+    "@lexical/rich-text": "^0.5.0",
+    "@lexical/table": "^0.5.0",
+    "lexical": "^0.5.0"
+  }
+}

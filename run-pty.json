@@ -1,0 +1,11 @@
+[
+  {
+    "command": ["npm", "run", "dev:elm"]
+  },
+  {
+    "command": ["npm", "run", "dev:js"]
+  },
+  {
+    "command": ["npm", "run", "dev:server"]
+  }
+]
