@@ -494,7 +494,7 @@ ${variant}`;
   var VERSION = "1.0.2";
   var TARGET_NAME = "Maple lang editor";
   var INITIAL_ELM_COMPILED_TIMESTAMP = Number(
-    "1666463860408"
+    "1666496052022"
   );
   var ORIGINAL_COMPILATION_MODE = "standard";
   var WEBSOCKET_PORT = "59314";
@@ -7277,27 +7277,363 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$document = _Browser_document;
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Main$EditorMsg = function (a) {
+	return {$: 'EditorMsg', a: a};
+};
+var $author$project$Maple$Editor$Hole = function (a) {
+	return {$: 'Hole', a: a};
+};
+var $author$project$Maple$Editor$NoOp = {$: 'NoOp'};
+var $elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var $elm$core$Task$onError = _Scheduler_onError;
+var $elm$core$Task$attempt = F2(
+	function (resultToMessage, task) {
+		return $elm$core$Task$command(
+			$elm$core$Task$Perform(
+				A2(
+					$elm$core$Task$onError,
+					A2(
+						$elm$core$Basics$composeL,
+						A2($elm$core$Basics$composeL, $elm$core$Task$succeed, resultToMessage),
+						$elm$core$Result$Err),
+					A2(
+						$elm$core$Task$andThen,
+						A2(
+							$elm$core$Basics$composeL,
+							A2($elm$core$Basics$composeL, $elm$core$Task$succeed, resultToMessage),
+							$elm$core$Result$Ok),
+						task))));
+	});
+var $elm$browser$Browser$Dom$focus = _Browser_call('focus');
+var $author$project$Zipper$Zipper = function (a) {
+	return {$: 'Zipper', a: a};
+};
+var $author$project$Zipper$singleton = function (a) {
+	return $author$project$Zipper$Zipper(
+		_Utils_Tuple3(
+			_List_Nil,
+			_Utils_Tuple2(0, a),
+			_List_Nil));
+};
+var $author$project$Maple$Editor$init = _Utils_Tuple2(
+	{
+		source: $author$project$Zipper$singleton(
+			$author$project$Maple$Editor$Hole(''))
+	},
+	A2(
+		$elm$core$Task$attempt,
+		function (_v0) {
+			return $author$project$Maple$Editor$NoOp;
+		},
+		$elm$browser$Browser$Dom$focus('maple-editor')));
+var $elm$core$Platform$Cmd$map = _Platform_map;
 var $author$project$Main$init = function (_v0) {
+	var _v1 = $author$project$Maple$Editor$init;
+	var editor = _v1.a;
+	var editorCmd = _v1.b;
 	return _Utils_Tuple2(
-		{},
-		$elm$core$Platform$Cmd$none);
+		{editor: editor},
+		A2($elm$core$Platform$Cmd$map, $author$project$Main$EditorMsg, editorCmd));
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $author$project$Main$subscriptions = function (model) {
+var $author$project$Main$subscriptions = function (_v0) {
 	return $elm$core$Platform$Sub$none;
 };
-var $elm$core$Debug$log = _Debug_log;
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Zipper$Change = F2(
+	function (a, b) {
+		return {$: 'Change', a: a, b: b};
+	});
+var $author$project$Zipper$Insert = F3(
+	function (a, b, c) {
+		return {$: 'Insert', a: a, b: b, c: c};
+	});
+var $author$project$Maple$Editor$Number = F2(
+	function (a, b) {
+		return {$: 'Number', a: a, b: b};
+	});
+var $author$project$Zipper$cursorNext = F2(
+	function (fn, zip) {
+		var _v0 = zip.a;
+		var before = _v0.a;
+		var _v1 = _v0.b;
+		var oldCursor = _v1.a;
+		var oldA = _v1.b;
+		var after = _v0.c;
+		var _v2 = A2(fn, oldCursor, oldA);
+		if (_v2.$ === 'Just') {
+			var cursor = _v2.a;
+			return $author$project$Zipper$Zipper(
+				_Utils_Tuple3(
+					before,
+					_Utils_Tuple2(cursor, oldA),
+					after));
+		} else {
+			if (!after.b) {
+				return zip;
+			} else {
+				var a = after.a;
+				var rest = after.b;
+				return $author$project$Zipper$Zipper(
+					_Utils_Tuple3(
+						before,
+						_Utils_Tuple2(0, a),
+						rest));
+			}
+		}
+	});
+var $author$project$Zipper$cursorPrevious = F3(
+	function (cursorEnd, fn, zip) {
+		var _v0 = zip.a;
+		var before = _v0.a;
+		var _v1 = _v0.b;
+		var oldCursor = _v1.a;
+		var oldA = _v1.b;
+		var after = _v0.c;
+		var _v2 = A2(fn, oldCursor, oldA);
+		if (_v2.$ === 'Just') {
+			var cursor = _v2.a;
+			return $author$project$Zipper$Zipper(
+				_Utils_Tuple3(
+					before,
+					_Utils_Tuple2(cursor, oldA),
+					after));
+		} else {
+			if (!before.b) {
+				return zip;
+			} else {
+				var a = before.a;
+				var rest = before.b;
+				return $author$project$Zipper$Zipper(
+					_Utils_Tuple3(
+						rest,
+						_Utils_Tuple2(
+							cursorEnd(a),
+							a),
+						A2($elm$core$List$cons, oldA, after)));
+			}
+		}
+	});
+var $author$project$Zipper$modify = F3(
+	function (cursorEnd, fn, _v0) {
+		var _v1 = _v0.a;
+		var before = _v1.a;
+		var _v2 = _v1.b;
+		var oldCursor = _v2.a;
+		var oldA = _v2.b;
+		var after = _v1.c;
+		var _v3 = A2(fn, oldCursor, oldA);
+		switch (_v3.$) {
+			case 'Change':
+				var cursor = _v3.a;
+				var a = _v3.b;
+				return $elm$core$Maybe$Just(
+					$author$project$Zipper$Zipper(
+						_Utils_Tuple3(
+							before,
+							_Utils_Tuple2(cursor, a),
+							after)));
+			case 'Remove':
+				if (!before.b) {
+					if (!after.b) {
+						return $elm$core$Maybe$Nothing;
+					} else {
+						var a = after.a;
+						var rest = after.b;
+						return $elm$core$Maybe$Just(
+							$author$project$Zipper$Zipper(
+								_Utils_Tuple3(
+									_List_Nil,
+									_Utils_Tuple2(0, a),
+									rest)));
+					}
+				} else {
+					var a = before.a;
+					var rest = before.b;
+					return $elm$core$Maybe$Just(
+						$author$project$Zipper$Zipper(
+							_Utils_Tuple3(
+								rest,
+								_Utils_Tuple2(
+									cursorEnd(a),
+									a),
+								after)));
+				}
+			default:
+				var b = _v3.a;
+				var a = _v3.b;
+				var afterPre = _v3.c;
+				return $elm$core$Maybe$Just(
+					$author$project$Zipper$Zipper(
+						_Utils_Tuple3(
+							A2($elm$core$List$cons, b, before),
+							_Utils_Tuple2(0, a),
+							_Utils_ap(afterPre, after))));
+		}
+	});
+var $elm$core$String$toFloat = _String_toFloat;
+var $author$project$Maple$Editor$tokenEnd = function (token) {
+	if (token.$ === 'Hole') {
+		var str = token.a;
+		return $elm$core$String$length(str);
+	} else {
+		var raw = token.a;
+		return $elm$core$String$length(raw);
+	}
+};
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var $author$project$Maple$Editor$update = F2(
+	function (msg, model) {
+		switch (msg.$) {
+			case 'NoOp':
+				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+			case 'FocusEditor':
+				return _Utils_Tuple2(
+					model,
+					A2(
+						$elm$core$Task$attempt,
+						function (_v1) {
+							return $author$project$Maple$Editor$NoOp;
+						},
+						$elm$browser$Browser$Dom$focus('maple-editor')));
+			case 'Move':
+				if (msg.a.$ === 'Right') {
+					var _v2 = msg.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								source: A2(
+									$author$project$Zipper$cursorNext,
+									F2(
+										function (cursor, token) {
+											if (token.$ === 'Hole') {
+												var str = token.a;
+												return (_Utils_cmp(
+													cursor,
+													$elm$core$String$length(str)) < 0) ? $elm$core$Maybe$Just(cursor + 1) : $elm$core$Maybe$Nothing;
+											} else {
+												var raw = token.a;
+												return $elm$core$Maybe$Nothing;
+											}
+										}),
+									model.source)
+							}),
+						$elm$core$Platform$Cmd$none);
+				} else {
+					var _v4 = msg.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								source: A3(
+									$author$project$Zipper$cursorPrevious,
+									$author$project$Maple$Editor$tokenEnd,
+									F2(
+										function (cursor, token) {
+											if (token.$ === 'Hole') {
+												var str = token.a;
+												return (cursor > 0) ? $elm$core$Maybe$Just(cursor - 1) : $elm$core$Maybe$Nothing;
+											} else {
+												var raw = token.a;
+												return $elm$core$Maybe$Nothing;
+											}
+										}),
+									model.source)
+							}),
+						$elm$core$Platform$Cmd$none);
+				}
+			default:
+				var str = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							source: A2(
+								$elm$core$Maybe$withDefault,
+								$author$project$Zipper$singleton(
+									$author$project$Maple$Editor$Hole('')),
+								A3(
+									$author$project$Zipper$modify,
+									$author$project$Maple$Editor$tokenEnd,
+									F2(
+										function (cursor, token) {
+											if (token.$ === 'Hole') {
+												var prevStr = token.a;
+												if (str === ' ') {
+													return A3(
+														$author$project$Zipper$Insert,
+														function () {
+															var _v7 = $elm$core$String$toFloat(prevStr);
+															if (_v7.$ === 'Nothing') {
+																return $author$project$Maple$Editor$Hole(prevStr);
+															} else {
+																var f = _v7.a;
+																return A2(
+																	$author$project$Maple$Editor$Number,
+																	prevStr,
+																	$elm$core$Result$Ok(f));
+															}
+														}(),
+														$author$project$Maple$Editor$Hole(''),
+														_List_Nil);
+												} else {
+													var before = A3($elm$core$String$slice, 0, cursor, prevStr);
+													var after = A3(
+														$elm$core$String$slice,
+														cursor,
+														$elm$core$String$length(prevStr),
+														prevStr);
+													return A2(
+														$author$project$Zipper$Change,
+														cursor + 1,
+														$author$project$Maple$Editor$Hole(
+															_Utils_ap(
+																before,
+																_Utils_ap(str, after))));
+												}
+											} else {
+												var raw = token.a;
+												var fRes = token.b;
+												return A2(
+													$author$project$Zipper$Change,
+													cursor,
+													A2($author$project$Maple$Editor$Number, raw, fRes));
+											}
+										}),
+									model.source))
+						}),
+					$elm$core$Platform$Cmd$none);
+		}
+	});
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		if (msg.$ === 'NoOp') {
 			return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 		} else {
-			var error = msg.a;
-			var _v1 = A2($elm$core$Debug$log, 'got editor error', error);
-			return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+			var editorMsg = msg.a;
+			var _v1 = A2($author$project$Maple$Editor$update, editorMsg, model.editor);
+			var editor = _v1.a;
+			var editorCmd = _v1.b;
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{editor: editor}),
+				A2($elm$core$Platform$Cmd$map, $author$project$Main$EditorMsg, editorCmd));
 		}
 	});
 var $mdgriffith$elm_ui$Internal$Style$classes = {above: 'a', active: 'atv', alignBottom: 'ab', alignCenterX: 'cx', alignCenterY: 'cy', alignContainerBottom: 'acb', alignContainerCenterX: 'accx', alignContainerCenterY: 'accy', alignContainerRight: 'acr', alignLeft: 'al', alignRight: 'ar', alignTop: 'at', alignedHorizontally: 'ah', alignedVertically: 'av', any: 's', behind: 'bh', below: 'b', bold: 'w7', borderDashed: 'bd', borderDotted: 'bdt', borderNone: 'bn', borderSolid: 'bs', capturePointerEvents: 'cpe', clip: 'cp', clipX: 'cpx', clipY: 'cpy', column: 'c', container: 'ctr', contentBottom: 'cb', contentCenterX: 'ccx', contentCenterY: 'ccy', contentLeft: 'cl', contentRight: 'cr', contentTop: 'ct', cursorPointer: 'cptr', cursorText: 'ctxt', focus: 'fcs', focusedWithin: 'focus-within', fullSize: 'fs', grid: 'g', hasBehind: 'hbh', heightContent: 'hc', heightExact: 'he', heightFill: 'hf', heightFillPortion: 'hfp', hover: 'hv', imageContainer: 'ic', inFront: 'fr', inputLabel: 'lbl', inputMultiline: 'iml', inputMultilineFiller: 'imlf', inputMultilineParent: 'imlp', inputMultilineWrapper: 'implw', inputText: 'it', italic: 'i', link: 'lnk', nearby: 'nb', noTextSelection: 'notxt', onLeft: 'ol', onRight: 'or', opaque: 'oq', overflowHidden: 'oh', page: 'pg', paragraph: 'p', passPointerEvents: 'ppe', root: 'ui', row: 'r', scrollbars: 'sb', scrollbarsX: 'sbx', scrollbarsY: 'sby', seButton: 'sbt', single: 'e', sizeByCapital: 'cap', spaceEvenly: 'sev', strike: 'sk', text: 't', textCenter: 'tc', textExtraBold: 'w8', textExtraLight: 'w2', textHeavy: 'w9', textJustify: 'tj', textJustifyAll: 'tja', textLeft: 'tl', textLight: 'w3', textMedium: 'w5', textNormalWeight: 'w4', textRight: 'tr', textSemiBold: 'w6', textThin: 'w1', textUnitalicized: 'tun', transition: 'ts', transparent: 'clr', underline: 'u', widthContent: 'wc', widthExact: 'we', widthFill: 'wf', widthFillPortion: 'wfp', wrapped: 'wrp'};
@@ -7510,15 +7846,6 @@ var $mdgriffith$elm_ui$Internal$Model$transformClass = function (transform) {
 				'tfrm-' + ($mdgriffith$elm_ui$Internal$Model$floatClass(tx) + ('-' + ($mdgriffith$elm_ui$Internal$Model$floatClass(ty) + ('-' + ($mdgriffith$elm_ui$Internal$Model$floatClass(tz) + ('-' + ($mdgriffith$elm_ui$Internal$Model$floatClass(sx) + ('-' + ($mdgriffith$elm_ui$Internal$Model$floatClass(sy) + ('-' + ($mdgriffith$elm_ui$Internal$Model$floatClass(sz) + ('-' + ($mdgriffith$elm_ui$Internal$Model$floatClass(ox) + ('-' + ($mdgriffith$elm_ui$Internal$Model$floatClass(oy) + ('-' + ($mdgriffith$elm_ui$Internal$Model$floatClass(oz) + ('-' + $mdgriffith$elm_ui$Internal$Model$floatClass(angle))))))))))))))))))));
 	}
 };
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
 var $mdgriffith$elm_ui$Internal$Model$getStyleName = function (style) {
 	switch (style.$) {
 		case 'Shadows':
@@ -13194,9 +13521,6 @@ var $mdgriffith$elm_ui$Element$layoutWith = F3(
 	});
 var $mdgriffith$elm_ui$Element$layout = $mdgriffith$elm_ui$Element$layoutWith(
 	{options: _List_Nil});
-var $author$project$Main$EditorError = function (a) {
-	return {$: 'EditorError', a: a};
-};
 var $mdgriffith$elm_ui$Internal$Model$AsColumn = {$: 'AsColumn'};
 var $mdgriffith$elm_ui$Internal$Model$asColumn = $mdgriffith$elm_ui$Internal$Model$AsColumn;
 var $mdgriffith$elm_ui$Internal$Model$Height = function (a) {
@@ -13244,17 +13568,18 @@ var $mdgriffith$elm_ui$Element$el = F2(
 				_List_fromArray(
 					[child])));
 	});
+var $mdgriffith$elm_ui$Internal$Model$Fill = function (a) {
+	return {$: 'Fill', a: a};
+};
+var $mdgriffith$elm_ui$Element$fill = $mdgriffith$elm_ui$Internal$Model$Fill(1);
 var $elm$core$Basics$always = F2(
 	function (a, _v0) {
 		return a;
 	});
-var $elm$core$Basics$composeL = F3(
-	function (g, f, x) {
-		return g(
-			f(x));
-	});
 var $mdgriffith$elm_ui$Internal$Model$unstyled = A2($elm$core$Basics$composeL, $mdgriffith$elm_ui$Internal$Model$Unstyled, $elm$core$Basics$always);
 var $mdgriffith$elm_ui$Element$html = $mdgriffith$elm_ui$Internal$Model$unstyled;
+var $elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
+var $elm$html$Html$map = $elm$virtual_dom$VirtualDom$map;
 var $mdgriffith$elm_ui$Internal$Model$PaddingStyle = F5(
 	function (a, b, c, d, e) {
 		return {$: 'PaddingStyle', a: a, b: b, c: c, d: d, e: e};
@@ -13279,19 +13604,99 @@ var $mdgriffith$elm_ui$Internal$Model$Text = function (a) {
 var $mdgriffith$elm_ui$Element$text = function (content) {
 	return $mdgriffith$elm_ui$Internal$Model$Text(content);
 };
-var $elm$json$Json$Decode$field = _Json_decodeField;
-var $elm$json$Json$Decode$value = _Json_decodeValue;
-var $author$project$Maple$Editor$decodeError = function (onError) {
-	return A2(
-		$elm$json$Json$Decode$map,
-		onError,
-		A2($elm$json$Json$Decode$field, 'detail', $elm$json$Json$Decode$value));
+var $author$project$Maple$Editor$FocusEditor = {$: 'FocusEditor'};
+var $elm$json$Json$Encode$bool = _Json_wrap;
+var $elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$bool(bool));
+	});
+var $elm$html$Html$Attributes$contenteditable = $elm$html$Html$Attributes$boolProperty('contentEditable');
+var $elm$virtual_dom$VirtualDom$Custom = function (a) {
+	return {$: 'Custom', a: a};
 };
-var $elm$html$Html$node = $elm$virtual_dom$VirtualDom$node;
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$custom = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Custom(decoder));
+	});
+var $author$project$Maple$Editor$GotInput = function (a) {
+	return {$: 'GotInput', a: a};
+};
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $author$project$Maple$Editor$decodeInput = A2(
+	$elm$json$Json$Decode$map,
+	function (data) {
+		return {
+			message: $author$project$Maple$Editor$GotInput(data),
+			preventDefault: true,
+			stopPropagation: true
+		};
+	},
+	A2($elm$json$Json$Decode$field, 'data', $elm$json$Json$Decode$string));
+var $author$project$Maple$Editor$Left = {$: 'Left'};
+var $author$project$Maple$Editor$Move = function (a) {
+	return {$: 'Move', a: a};
+};
+var $author$project$Maple$Editor$Right = {$: 'Right'};
+var $elm$json$Json$Decode$andThen = _Json_andThen;
+var $elm$json$Json$Decode$fail = _Json_fail;
+var $elm$core$Debug$log = _Debug_log;
+var $author$project$Maple$Editor$decodeKeyDown = A2(
+	$elm$json$Json$Decode$map,
+	function (dir) {
+		return {
+			message: $author$project$Maple$Editor$Move(dir),
+			preventDefault: true,
+			stopPropagation: true
+		};
+	},
+	A2(
+		$elm$json$Json$Decode$andThen,
+		function (key) {
+			switch (key) {
+				case 'ArrowRight':
+					return $elm$json$Json$Decode$succeed($author$project$Maple$Editor$Right);
+				case 'ArrowLeft':
+					return $elm$json$Json$Decode$succeed($author$project$Maple$Editor$Left);
+				default:
+					return $elm$json$Json$Decode$fail(
+						A2($elm$core$Debug$log, 'key?', key));
+			}
+		},
+		A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string)));
+var $author$project$Zipper$foldr = F3(
+	function (fn, b, _v0) {
+		var _v1 = _v0.a;
+		var before = _v1.a;
+		var _v2 = _v1.b;
+		var cursor = _v2.a;
+		var a = _v2.b;
+		var after = _v1.c;
+		return A3(
+			$elm$core$List$foldl,
+			fn($elm$core$Maybe$Nothing),
+			A3(
+				fn,
+				$elm$core$Maybe$Just(cursor),
+				a,
+				A3(
+					$elm$core$List$foldr,
+					fn($elm$core$Maybe$Nothing),
+					b,
+					after)),
+			before);
+	});
+var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
-var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
 var $elm$html$Html$Events$on = F2(
 	function (event, decoder) {
 		return A2(
@@ -13299,35 +13704,153 @@ var $elm$html$Html$Events$on = F2(
 			event,
 			$elm$virtual_dom$VirtualDom$Normal(decoder));
 	});
-var $author$project$Maple$Editor$view = function (config) {
-	return A3(
-		$elm$html$Html$node,
-		'maple-editor',
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
+var $elm$html$Html$textarea = _VirtualDom_node('textarea');
+var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $elm$html$Html$span = _VirtualDom_node('span');
+var $author$project$Maple$Editor$viewToken = F2(
+	function (maybeCursor, token) {
+		if (token.$ === 'Hole') {
+			var str = token.a;
+			return A2(
+				$elm$html$Html$span,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('token hole')
+					]),
+				function () {
+					var _v1 = A2($elm$core$Debug$log, 'curs?', maybeCursor);
+					if (_v1.$ === 'Nothing') {
+						return _List_fromArray(
+							[
+								$elm$html$Html$text(str)
+							]);
+					} else {
+						var cursor = _v1.a;
+						return _List_fromArray(
+							[
+								$elm$html$Html$text(
+								A3($elm$core$String$slice, 0, cursor, str)),
+								A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('cursor')
+									]),
+								_List_Nil),
+								$elm$html$Html$text(
+								A3(
+									$elm$core$String$slice,
+									cursor,
+									$elm$core$String$length(str),
+									str))
+							]);
+					}
+				}());
+		} else {
+			var raw = token.a;
+			return A2(
+				$elm$html$Html$span,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('token number')
+					]),
+				function () {
+					if (maybeCursor.$ === 'Nothing') {
+						return _List_fromArray(
+							[
+								$elm$html$Html$text(raw)
+							]);
+					} else {
+						var cursor = maybeCursor.a;
+						return _List_fromArray(
+							[
+								$elm$html$Html$text(
+								A3($elm$core$String$slice, 0, cursor, raw)),
+								A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('cursor')
+									]),
+								_List_Nil),
+								$elm$html$Html$text(
+								A3(
+									$elm$core$String$slice,
+									cursor,
+									$elm$core$String$length(raw),
+									raw))
+							]);
+					}
+				}());
+		}
+	});
+var $author$project$Maple$Editor$view = function (model) {
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				$elm$html$Html$Events$onClick($author$project$Maple$Editor$FocusEditor)
+			]),
 		_List_fromArray(
 			[
 				A2(
-				$elm$html$Html$Events$on,
-				'maple-editor-error',
-				$author$project$Maple$Editor$decodeError(config.onError))
-			]),
-		_List_Nil);
+				$elm$html$Html$textarea,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Events$custom, 'input', $author$project$Maple$Editor$decodeInput),
+						A2($elm$html$Html$Events$custom, 'keydown', $author$project$Maple$Editor$decodeKeyDown),
+						$elm$html$Html$Attributes$contenteditable(true),
+						$elm$html$Html$Attributes$id('maple-editor'),
+						$elm$html$Html$Attributes$value('')
+					]),
+				_List_Nil),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('editor')
+					]),
+				A3(
+					$author$project$Zipper$foldr,
+					F3(
+						function (maybeCursor, token, renderedTokens) {
+							return A2(
+								$elm$core$List$cons,
+								A2($author$project$Maple$Editor$viewToken, maybeCursor, token),
+								renderedTokens);
+						}),
+					_List_Nil,
+					model.source))
+			]));
 };
 var $author$project$Main$viewModel = function (model) {
 	return A2(
 		$mdgriffith$elm_ui$Element$column,
 		_List_fromArray(
 			[
-				$mdgriffith$elm_ui$Element$padding(16)
+				$mdgriffith$elm_ui$Element$padding(16),
+				$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
 			]),
 		_List_fromArray(
 			[
 				$mdgriffith$elm_ui$Element$text('Maple Lang'),
 				A2(
 				$mdgriffith$elm_ui$Element$el,
-				_List_Nil,
+				_List_fromArray(
+					[
+						$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
+					]),
 				$mdgriffith$elm_ui$Element$html(
-					$author$project$Maple$Editor$view(
-						{onError: $author$project$Main$EditorError})))
+					A2(
+						$elm$html$Html$map,
+						$author$project$Main$EditorMsg,
+						$author$project$Maple$Editor$view(model.editor))))
 			]));
 };
 var $author$project$Main$view = function (model) {
