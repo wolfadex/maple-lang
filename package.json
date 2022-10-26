@@ -7,7 +7,8 @@
     "dev": "run-pty run-pty.json",
     "dev:elm": "elm-watch hot",
     "dev:js": "esbuild --bundle src/index.js --outdir=dist --watch",
-    "dev:server": "http-server dist"
+    "dev:server": "http-server dist",
+    "dev:cli": "elm-cli run --debug src/Maple/Cli.elm"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,7 @@
   },
   "homepage": "https://github.com/wolfadex/elm-nix#readme",
   "devDependencies": {
+    "@albertdahlin/elm-posix": "^1.1.0",
     "elm-watch": "^1.0.2",
     "esbuild": "^0.15.12",
     "http-server": "^14.1.1",

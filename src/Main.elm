@@ -2,7 +2,10 @@ module Main exposing (main)
 
 import Browser
 import Element exposing (..)
+import Element.Input as Input
+import Extra.Result
 import Html
+import Maple exposing (Expr)
 import Maple.Editor
 
 
@@ -18,6 +21,7 @@ main =
 
 type alias Model =
     { editor : Maple.Editor.Model
+    , output : Result String (List Expr)
     }
 
 
@@ -28,6 +32,7 @@ init () =
             Maple.Editor.init
     in
     ( { editor = editor
+      , output = Ok []
       }
     , Cmd.map EditorMsg editorCmd
     )
@@ -41,6 +46,7 @@ subscriptions _ =
 type Msg
     = NoOp
     | EditorMsg Maple.Editor.Msg
+    | ExecuteCode
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -58,6 +64,16 @@ update msg model =
             , Cmd.map EditorMsg editorCmd
             )
 
+        ExecuteCode ->
+            ( { model
+                | output =
+                    model.editor
+                        |> Maple.Editor.tokens
+                        |> Maple.parseFromTokens
+              }
+            , Cmd.none
+            )
+
 
 view : Model -> Browser.Document Msg
 view model =
@@ -72,6 +88,7 @@ viewModel : Model -> Element Msg
 viewModel model =
     column
         [ padding 16
+        , spacing 16
         , width fill
         ]
         [ text "Maple Lang"
@@ -79,4 +96,10 @@ viewModel model =
             |> Html.map EditorMsg
             |> html
             |> el [ width fill ]
+        , Input.button
+            []
+            { label = text "Run"
+            , onPress = Just ExecuteCode
+            }
+        , text (Debug.toString model.output)
         ]

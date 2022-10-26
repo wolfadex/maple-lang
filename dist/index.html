@@ -3,9 +3,9 @@
   <head>
     <style>
       #maple-editor {
-        /* height: 0;
+        height: 0;
         width: 0;
-        opacity: 0; */
+        opacity: 0;
       }
 
       .editor {
@@ -27,6 +27,7 @@
       .token {
         min-width: 0.5rem;
         height: 1rem;
+        border-bottom: 2px solid rgba(0, 0, 0, 0);
       }
 
       .number {
@@ -34,7 +35,7 @@
       }
 
       .hole {
-        border-bottom: 1px solid burlywood;
+        border-bottom: 2px solid burlywood;
       }
 
       .cursor {
@@ -54,6 +55,10 @@
         to {
           opacity: 0;
         }
+      }
+
+      .error {
+        border-bottom: 2px solid red;
       }
     </style>
   </head>

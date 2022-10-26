@@ -494,7 +494,7 @@ ${variant}`;
   var VERSION = "1.0.2";
   var TARGET_NAME = "Maple lang editor";
   var INITIAL_ELM_COMPILED_TIMESTAMP = Number(
-    "1666496052022"
+    "1666501580085"
   );
   var ORIGINAL_COMPILATION_MODE = "standard";
   var WEBSOCKET_PORT = "59314";
@@ -6454,6 +6454,136 @@ function _Browser_load(url)
 
 
 
+
+// STRINGS
+
+
+var _Parser_isSubString = F5(function(smallString, offset, row, col, bigString)
+{
+	var smallLength = smallString.length;
+	var isGood = offset + smallLength <= bigString.length;
+
+	for (var i = 0; isGood && i < smallLength; )
+	{
+		var code = bigString.charCodeAt(offset);
+		isGood =
+			smallString[i++] === bigString[offset++]
+			&& (
+				code === 0x000A /* \n */
+					? ( row++, col=1 )
+					: ( col++, (code & 0xF800) === 0xD800 ? smallString[i++] === bigString[offset++] : 1 )
+			)
+	}
+
+	return _Utils_Tuple3(isGood ? offset : -1, row, col);
+});
+
+
+
+// CHARS
+
+
+var _Parser_isSubChar = F3(function(predicate, offset, string)
+{
+	return (
+		string.length <= offset
+			? -1
+			:
+		(string.charCodeAt(offset) & 0xF800) === 0xD800
+			? (predicate(_Utils_chr(string.substr(offset, 2))) ? offset + 2 : -1)
+			:
+		(predicate(_Utils_chr(string[offset]))
+			? ((string[offset] === '\n') ? -2 : (offset + 1))
+			: -1
+		)
+	);
+});
+
+
+var _Parser_isAsciiCode = F3(function(code, offset, string)
+{
+	return string.charCodeAt(offset) === code;
+});
+
+
+
+// NUMBERS
+
+
+var _Parser_chompBase10 = F2(function(offset, string)
+{
+	for (; offset < string.length; offset++)
+	{
+		var code = string.charCodeAt(offset);
+		if (code < 0x30 || 0x39 < code)
+		{
+			return offset;
+		}
+	}
+	return offset;
+});
+
+
+var _Parser_consumeBase = F3(function(base, offset, string)
+{
+	for (var total = 0; offset < string.length; offset++)
+	{
+		var digit = string.charCodeAt(offset) - 0x30;
+		if (digit < 0 || base <= digit) break;
+		total = base * total + digit;
+	}
+	return _Utils_Tuple2(offset, total);
+});
+
+
+var _Parser_consumeBase16 = F2(function(offset, string)
+{
+	for (var total = 0; offset < string.length; offset++)
+	{
+		var code = string.charCodeAt(offset);
+		if (0x30 <= code && code <= 0x39)
+		{
+			total = 16 * total + code - 0x30;
+		}
+		else if (0x41 <= code && code <= 0x46)
+		{
+			total = 16 * total + code - 55;
+		}
+		else if (0x61 <= code && code <= 0x66)
+		{
+			total = 16 * total + code - 87;
+		}
+		else
+		{
+			break;
+		}
+	}
+	return _Utils_Tuple2(offset, total);
+});
+
+
+
+// FIND STRING
+
+
+var _Parser_findSubString = F5(function(smallString, offset, row, col, bigString)
+{
+	var newOffset = bigString.indexOf(smallString, offset);
+	var target = newOffset < 0 ? bigString.length : newOffset + smallString.length;
+
+	while (offset < target)
+	{
+		var code = bigString.charCodeAt(offset++);
+		code === 0x000A /* \n */
+			? ( col=1, row++ )
+			: ( col++, (code & 0xF800) === 0xD800 && offset++ )
+	}
+
+	return _Utils_Tuple3(newOffset, row, col);
+});
+
+
+
 var _Bitwise_and = F2(function(a, b)
 {
 	return a & b;
@@ -7280,10 +7410,11 @@ var $elm$browser$Browser$document = _Browser_document;
 var $author$project$Main$EditorMsg = function (a) {
 	return {$: 'EditorMsg', a: a};
 };
-var $author$project$Maple$Editor$Hole = function (a) {
-	return {$: 'Hole', a: a};
-};
 var $author$project$Maple$Editor$NoOp = {$: 'NoOp'};
+var $author$project$Maple$Editor$Token = F2(
+	function (a, b) {
+		return {$: 'Token', a: a, b: b};
+	});
 var $elm$core$Basics$composeL = F3(
 	function (g, f, x) {
 		return g(
@@ -7322,7 +7453,7 @@ var $author$project$Zipper$singleton = function (a) {
 var $author$project$Maple$Editor$init = _Utils_Tuple2(
 	{
 		source: $author$project$Zipper$singleton(
-			$author$project$Maple$Editor$Hole(''))
+			A2($author$project$Maple$Editor$Token, '', $elm$core$Maybe$Nothing))
 	},
 	A2(
 		$elm$core$Task$attempt,
@@ -7336,7 +7467,10 @@ var $author$project$Main$init = function (_v0) {
 	var editor = _v1.a;
 	var editorCmd = _v1.b;
 	return _Utils_Tuple2(
-		{editor: editor},
+		{
+			editor: editor,
+			output: $elm$core$Result$Ok(_List_Nil)
+		},
 		A2($elm$core$Platform$Cmd$map, $author$project$Main$EditorMsg, editorCmd));
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -7344,8 +7478,479 @@ var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
 var $author$project$Main$subscriptions = function (_v0) {
 	return $elm$core$Platform$Sub$none;
 };
+var $author$project$Extra$Result$fromListHelper = F2(
+	function (input, output) {
+		fromListHelper:
+		while (true) {
+			if (!input.b) {
+				return $elm$core$Result$Ok(
+					$elm$core$List$reverse(output));
+			} else {
+				if (input.a.$ === 'Err') {
+					var err = input.a.a;
+					return $elm$core$Result$Err(err);
+				} else {
+					var a = input.a.a;
+					var rest = input.b;
+					var $temp$input = rest,
+						$temp$output = A2($elm$core$List$cons, a, output);
+					input = $temp$input;
+					output = $temp$output;
+					continue fromListHelper;
+				}
+			}
+		}
+	});
+var $author$project$Extra$Result$fromList = function (listResults) {
+	return A2($author$project$Extra$Result$fromListHelper, listResults, _List_Nil);
+};
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $elm$parser$Parser$Advanced$Empty = {$: 'Empty'};
+var $elm$parser$Parser$Advanced$Parser = function (a) {
+	return {$: 'Parser', a: a};
+};
+var $elm$parser$Parser$Advanced$Append = F2(
+	function (a, b) {
+		return {$: 'Append', a: a, b: b};
+	});
+var $elm$parser$Parser$Advanced$Bad = F2(
+	function (a, b) {
+		return {$: 'Bad', a: a, b: b};
+	});
+var $elm$parser$Parser$Advanced$oneOfHelp = F3(
+	function (s0, bag, parsers) {
+		oneOfHelp:
+		while (true) {
+			if (!parsers.b) {
+				return A2($elm$parser$Parser$Advanced$Bad, false, bag);
+			} else {
+				var parse = parsers.a.a;
+				var remainingParsers = parsers.b;
+				var _v1 = parse(s0);
+				if (_v1.$ === 'Good') {
+					var step = _v1;
+					return step;
+				} else {
+					var step = _v1;
+					var p = step.a;
+					var x = step.b;
+					if (p) {
+						return step;
+					} else {
+						var $temp$s0 = s0,
+							$temp$bag = A2($elm$parser$Parser$Advanced$Append, bag, x),
+							$temp$parsers = remainingParsers;
+						s0 = $temp$s0;
+						bag = $temp$bag;
+						parsers = $temp$parsers;
+						continue oneOfHelp;
+					}
+				}
+			}
+		}
+	});
+var $elm$parser$Parser$Advanced$oneOf = function (parsers) {
+	return $elm$parser$Parser$Advanced$Parser(
+		function (s) {
+			return A3($elm$parser$Parser$Advanced$oneOfHelp, s, $elm$parser$Parser$Advanced$Empty, parsers);
+		});
+};
+var $elm$parser$Parser$oneOf = $elm$parser$Parser$Advanced$oneOf;
+var $author$project$Maple$Function = function (a) {
+	return {$: 'Function', a: a};
+};
+var $elm$parser$Parser$UnexpectedChar = {$: 'UnexpectedChar'};
+var $elm$parser$Parser$Advanced$Good = F3(
+	function (a, b, c) {
+		return {$: 'Good', a: a, b: b, c: c};
+	});
+var $elm$parser$Parser$Advanced$AddRight = F2(
+	function (a, b) {
+		return {$: 'AddRight', a: a, b: b};
+	});
+var $elm$parser$Parser$Advanced$DeadEnd = F4(
+	function (row, col, problem, contextStack) {
+		return {col: col, contextStack: contextStack, problem: problem, row: row};
+	});
+var $elm$parser$Parser$Advanced$fromState = F2(
+	function (s, x) {
+		return A2(
+			$elm$parser$Parser$Advanced$AddRight,
+			$elm$parser$Parser$Advanced$Empty,
+			A4($elm$parser$Parser$Advanced$DeadEnd, s.row, s.col, x, s.context));
+	});
+var $elm$parser$Parser$Advanced$isSubChar = _Parser_isSubChar;
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $elm$parser$Parser$Advanced$chompIf = F2(
+	function (isGood, expecting) {
+		return $elm$parser$Parser$Advanced$Parser(
+			function (s) {
+				var newOffset = A3($elm$parser$Parser$Advanced$isSubChar, isGood, s.offset, s.src);
+				return _Utils_eq(newOffset, -1) ? A2(
+					$elm$parser$Parser$Advanced$Bad,
+					false,
+					A2($elm$parser$Parser$Advanced$fromState, s, expecting)) : (_Utils_eq(newOffset, -2) ? A3(
+					$elm$parser$Parser$Advanced$Good,
+					true,
+					_Utils_Tuple0,
+					{col: 1, context: s.context, indent: s.indent, offset: s.offset + 1, row: s.row + 1, src: s.src}) : A3(
+					$elm$parser$Parser$Advanced$Good,
+					true,
+					_Utils_Tuple0,
+					{col: s.col + 1, context: s.context, indent: s.indent, offset: newOffset, row: s.row, src: s.src}));
+			});
+	});
+var $elm$parser$Parser$chompIf = function (isGood) {
+	return A2($elm$parser$Parser$Advanced$chompIf, isGood, $elm$parser$Parser$UnexpectedChar);
+};
+var $elm$parser$Parser$Advanced$chompWhileHelp = F5(
+	function (isGood, offset, row, col, s0) {
+		chompWhileHelp:
+		while (true) {
+			var newOffset = A3($elm$parser$Parser$Advanced$isSubChar, isGood, offset, s0.src);
+			if (_Utils_eq(newOffset, -1)) {
+				return A3(
+					$elm$parser$Parser$Advanced$Good,
+					_Utils_cmp(s0.offset, offset) < 0,
+					_Utils_Tuple0,
+					{col: col, context: s0.context, indent: s0.indent, offset: offset, row: row, src: s0.src});
+			} else {
+				if (_Utils_eq(newOffset, -2)) {
+					var $temp$isGood = isGood,
+						$temp$offset = offset + 1,
+						$temp$row = row + 1,
+						$temp$col = 1,
+						$temp$s0 = s0;
+					isGood = $temp$isGood;
+					offset = $temp$offset;
+					row = $temp$row;
+					col = $temp$col;
+					s0 = $temp$s0;
+					continue chompWhileHelp;
+				} else {
+					var $temp$isGood = isGood,
+						$temp$offset = newOffset,
+						$temp$row = row,
+						$temp$col = col + 1,
+						$temp$s0 = s0;
+					isGood = $temp$isGood;
+					offset = $temp$offset;
+					row = $temp$row;
+					col = $temp$col;
+					s0 = $temp$s0;
+					continue chompWhileHelp;
+				}
+			}
+		}
+	});
+var $elm$parser$Parser$Advanced$chompWhile = function (isGood) {
+	return $elm$parser$Parser$Advanced$Parser(
+		function (s) {
+			return A5($elm$parser$Parser$Advanced$chompWhileHelp, isGood, s.offset, s.row, s.col, s);
+		});
+};
+var $elm$parser$Parser$chompWhile = $elm$parser$Parser$Advanced$chompWhile;
+var $elm$core$Basics$always = F2(
+	function (a, _v0) {
+		return a;
+	});
+var $elm$parser$Parser$Advanced$mapChompedString = F2(
+	function (func, _v0) {
+		var parse = _v0.a;
+		return $elm$parser$Parser$Advanced$Parser(
+			function (s0) {
+				var _v1 = parse(s0);
+				if (_v1.$ === 'Bad') {
+					var p = _v1.a;
+					var x = _v1.b;
+					return A2($elm$parser$Parser$Advanced$Bad, p, x);
+				} else {
+					var p = _v1.a;
+					var a = _v1.b;
+					var s1 = _v1.c;
+					return A3(
+						$elm$parser$Parser$Advanced$Good,
+						p,
+						A2(
+							func,
+							A3($elm$core$String$slice, s0.offset, s1.offset, s0.src),
+							a),
+						s1);
+				}
+			});
+	});
+var $elm$parser$Parser$Advanced$getChompedString = function (parser) {
+	return A2($elm$parser$Parser$Advanced$mapChompedString, $elm$core$Basics$always, parser);
+};
+var $elm$parser$Parser$getChompedString = $elm$parser$Parser$Advanced$getChompedString;
+var $elm$parser$Parser$Advanced$map2 = F3(
+	function (func, _v0, _v1) {
+		var parseA = _v0.a;
+		var parseB = _v1.a;
+		return $elm$parser$Parser$Advanced$Parser(
+			function (s0) {
+				var _v2 = parseA(s0);
+				if (_v2.$ === 'Bad') {
+					var p = _v2.a;
+					var x = _v2.b;
+					return A2($elm$parser$Parser$Advanced$Bad, p, x);
+				} else {
+					var p1 = _v2.a;
+					var a = _v2.b;
+					var s1 = _v2.c;
+					var _v3 = parseB(s1);
+					if (_v3.$ === 'Bad') {
+						var p2 = _v3.a;
+						var x = _v3.b;
+						return A2($elm$parser$Parser$Advanced$Bad, p1 || p2, x);
+					} else {
+						var p2 = _v3.a;
+						var b = _v3.b;
+						var s2 = _v3.c;
+						return A3(
+							$elm$parser$Parser$Advanced$Good,
+							p1 || p2,
+							A2(func, a, b),
+							s2);
+					}
+				}
+			});
+	});
+var $elm$parser$Parser$Advanced$ignorer = F2(
+	function (keepParser, ignoreParser) {
+		return A3($elm$parser$Parser$Advanced$map2, $elm$core$Basics$always, keepParser, ignoreParser);
+	});
+var $elm$parser$Parser$ignorer = $elm$parser$Parser$Advanced$ignorer;
+var $elm$parser$Parser$Advanced$map = F2(
+	function (func, _v0) {
+		var parse = _v0.a;
+		return $elm$parser$Parser$Advanced$Parser(
+			function (s0) {
+				var _v1 = parse(s0);
+				if (_v1.$ === 'Good') {
+					var p = _v1.a;
+					var a = _v1.b;
+					var s1 = _v1.c;
+					return A3(
+						$elm$parser$Parser$Advanced$Good,
+						p,
+						func(a),
+						s1);
+				} else {
+					var p = _v1.a;
+					var x = _v1.b;
+					return A2($elm$parser$Parser$Advanced$Bad, p, x);
+				}
+			});
+	});
+var $elm$parser$Parser$map = $elm$parser$Parser$Advanced$map;
+var $elm$parser$Parser$Advanced$succeed = function (a) {
+	return $elm$parser$Parser$Advanced$Parser(
+		function (s) {
+			return A3($elm$parser$Parser$Advanced$Good, false, a, s);
+		});
+};
+var $elm$parser$Parser$succeed = $elm$parser$Parser$Advanced$succeed;
+var $author$project$Maple$parseFunction = A2(
+	$elm$parser$Parser$map,
+	$author$project$Maple$Function,
+	$elm$parser$Parser$getChompedString(
+		A2(
+			$elm$parser$Parser$ignorer,
+			A2(
+				$elm$parser$Parser$ignorer,
+				$elm$parser$Parser$succeed(_Utils_Tuple0),
+				$elm$parser$Parser$chompIf(
+					function (_char) {
+						return ($elm$core$Char$isAlpha(_char) && $elm$core$Char$isLower(_char)) || _Utils_eq(
+							_char,
+							_Utils_chr('.'));
+					})),
+			$elm$parser$Parser$chompWhile(
+				function (_char) {
+					return $elm$core$Char$isAlphaNum(_char) || _Utils_eq(
+						_char,
+						_Utils_chr('_'));
+				}))));
+var $author$project$Maple$Number = function (a) {
+	return {$: 'Number', a: a};
+};
+var $elm$parser$Parser$Advanced$andThen = F2(
+	function (callback, _v0) {
+		var parseA = _v0.a;
+		return $elm$parser$Parser$Advanced$Parser(
+			function (s0) {
+				var _v1 = parseA(s0);
+				if (_v1.$ === 'Bad') {
+					var p = _v1.a;
+					var x = _v1.b;
+					return A2($elm$parser$Parser$Advanced$Bad, p, x);
+				} else {
+					var p1 = _v1.a;
+					var a = _v1.b;
+					var s1 = _v1.c;
+					var _v2 = callback(a);
+					var parseB = _v2.a;
+					var _v3 = parseB(s1);
+					if (_v3.$ === 'Bad') {
+						var p2 = _v3.a;
+						var x = _v3.b;
+						return A2($elm$parser$Parser$Advanced$Bad, p1 || p2, x);
+					} else {
+						var p2 = _v3.a;
+						var b = _v3.b;
+						var s2 = _v3.c;
+						return A3($elm$parser$Parser$Advanced$Good, p1 || p2, b, s2);
+					}
+				}
+			});
+	});
+var $elm$parser$Parser$andThen = $elm$parser$Parser$Advanced$andThen;
+var $elm$parser$Parser$Problem = function (a) {
+	return {$: 'Problem', a: a};
+};
+var $elm$parser$Parser$Advanced$problem = function (x) {
+	return $elm$parser$Parser$Advanced$Parser(
+		function (s) {
+			return A2(
+				$elm$parser$Parser$Advanced$Bad,
+				false,
+				A2($elm$parser$Parser$Advanced$fromState, s, x));
+		});
+};
+var $elm$parser$Parser$problem = function (msg) {
+	return $elm$parser$Parser$Advanced$problem(
+		$elm$parser$Parser$Problem(msg));
+};
+var $elm$core$String$toFloat = _String_toFloat;
+var $author$project$Maple$parseNumber = A2(
+	$elm$parser$Parser$andThen,
+	function (digitsStr) {
+		var _v0 = $elm$core$String$toFloat(digitsStr);
+		if (_v0.$ === 'Nothing') {
+			return $elm$parser$Parser$problem('should be made of digits, odd...');
+		} else {
+			var f = _v0.a;
+			return $elm$parser$Parser$succeed(
+				$author$project$Maple$Number(f));
+		}
+	},
+	$elm$parser$Parser$getChompedString(
+		A2(
+			$elm$parser$Parser$ignorer,
+			A2(
+				$elm$parser$Parser$ignorer,
+				$elm$parser$Parser$succeed(_Utils_Tuple0),
+				$elm$parser$Parser$chompIf($elm$core$Char$isDigit)),
+			$elm$parser$Parser$chompWhile($elm$core$Char$isDigit))));
+var $author$project$Maple$parseTokenHelper = $elm$parser$Parser$oneOf(
+	_List_fromArray(
+		[$author$project$Maple$parseNumber, $author$project$Maple$parseFunction]));
+var $elm$parser$Parser$DeadEnd = F3(
+	function (row, col, problem) {
+		return {col: col, problem: problem, row: row};
+	});
+var $elm$parser$Parser$problemToDeadEnd = function (p) {
+	return A3($elm$parser$Parser$DeadEnd, p.row, p.col, p.problem);
+};
+var $elm$parser$Parser$Advanced$bagToList = F2(
+	function (bag, list) {
+		bagToList:
+		while (true) {
+			switch (bag.$) {
+				case 'Empty':
+					return list;
+				case 'AddRight':
+					var bag1 = bag.a;
+					var x = bag.b;
+					var $temp$bag = bag1,
+						$temp$list = A2($elm$core$List$cons, x, list);
+					bag = $temp$bag;
+					list = $temp$list;
+					continue bagToList;
+				default:
+					var bag1 = bag.a;
+					var bag2 = bag.b;
+					var $temp$bag = bag1,
+						$temp$list = A2($elm$parser$Parser$Advanced$bagToList, bag2, list);
+					bag = $temp$bag;
+					list = $temp$list;
+					continue bagToList;
+			}
+		}
+	});
+var $elm$parser$Parser$Advanced$run = F2(
+	function (_v0, src) {
+		var parse = _v0.a;
+		var _v1 = parse(
+			{col: 1, context: _List_Nil, indent: 1, offset: 0, row: 1, src: src});
+		if (_v1.$ === 'Good') {
+			var value = _v1.b;
+			return $elm$core$Result$Ok(value);
+		} else {
+			var bag = _v1.b;
+			return $elm$core$Result$Err(
+				A2($elm$parser$Parser$Advanced$bagToList, bag, _List_Nil));
+		}
+	});
+var $elm$parser$Parser$run = F2(
+	function (parser, source) {
+		var _v0 = A2($elm$parser$Parser$Advanced$run, parser, source);
+		if (_v0.$ === 'Ok') {
+			var a = _v0.a;
+			return $elm$core$Result$Ok(a);
+		} else {
+			var problems = _v0.a;
+			return $elm$core$Result$Err(
+				A2($elm$core$List$map, $elm$parser$Parser$problemToDeadEnd, problems));
+		}
+	});
+var $author$project$Maple$parseToken = function (token) {
+	var _v0 = A2($elm$parser$Parser$run, $author$project$Maple$parseTokenHelper, token);
+	if (_v0.$ === 'Err') {
+		return $elm$core$Result$Err('parse error');
+	} else {
+		var expr = _v0.a;
+		return $elm$core$Result$Ok(expr);
+	}
+};
+var $author$project$Maple$parse = $elm$core$List$map($author$project$Maple$parseToken);
+var $author$project$Zipper$foldr = F3(
+	function (fn, b, _v0) {
+		var _v1 = _v0.a;
+		var before = _v1.a;
+		var _v2 = _v1.b;
+		var cursor = _v2.a;
+		var a = _v2.b;
+		var after = _v1.c;
+		return A3(
+			$elm$core$List$foldl,
+			fn($elm$core$Maybe$Nothing),
+			A3(
+				fn,
+				$elm$core$Maybe$Just(cursor),
+				a,
+				A3(
+					$elm$core$List$foldr,
+					fn($elm$core$Maybe$Nothing),
+					b,
+					after)),
+			before);
+	});
+var $author$project$Maple$Editor$tokens = function (model) {
+	return A3(
+		$author$project$Zipper$foldr,
+		F3(
+			function (_v0, _v1, result) {
+				var raw = _v1.a;
+				return A2($elm$core$List$cons, raw, result);
+			}),
+		_List_Nil,
+		model.source);
+};
 var $author$project$Zipper$Change = F2(
 	function (a, b) {
 		return {$: 'Change', a: a, b: b};
@@ -7353,10 +7958,6 @@ var $author$project$Zipper$Change = F2(
 var $author$project$Zipper$Insert = F3(
 	function (a, b, c) {
 		return {$: 'Insert', a: a, b: b, c: c};
-	});
-var $author$project$Maple$Editor$Number = F2(
-	function (a, b) {
-		return {$: 'Number', a: a, b: b};
 	});
 var $author$project$Zipper$cursorNext = F2(
 	function (fn, zip) {
@@ -7382,7 +7983,7 @@ var $author$project$Zipper$cursorNext = F2(
 				var rest = after.b;
 				return $author$project$Zipper$Zipper(
 					_Utils_Tuple3(
-						before,
+						A2($elm$core$List$cons, oldA, before),
 						_Utils_Tuple2(0, a),
 						rest));
 			}
@@ -7477,15 +8078,9 @@ var $author$project$Zipper$modify = F3(
 							_Utils_ap(afterPre, after))));
 		}
 	});
-var $elm$core$String$toFloat = _String_toFloat;
-var $author$project$Maple$Editor$tokenEnd = function (token) {
-	if (token.$ === 'Hole') {
-		var str = token.a;
-		return $elm$core$String$length(str);
-	} else {
-		var raw = token.a;
-		return $elm$core$String$length(raw);
-	}
+var $author$project$Maple$Editor$tokenEnd = function (_v0) {
+	var raw = _v0.a;
+	return $elm$core$String$length(raw);
 };
 var $elm$core$Maybe$withDefault = F2(
 	function (_default, maybe) {
@@ -7520,16 +8115,11 @@ var $author$project$Maple$Editor$update = F2(
 								source: A2(
 									$author$project$Zipper$cursorNext,
 									F2(
-										function (cursor, token) {
-											if (token.$ === 'Hole') {
-												var str = token.a;
-												return (_Utils_cmp(
-													cursor,
-													$elm$core$String$length(str)) < 0) ? $elm$core$Maybe$Just(cursor + 1) : $elm$core$Maybe$Nothing;
-											} else {
-												var raw = token.a;
-												return $elm$core$Maybe$Nothing;
-											}
+										function (cursor, _v3) {
+											var raw = _v3.a;
+											return (_Utils_cmp(
+												cursor,
+												$elm$core$String$length(raw)) < 0) ? $elm$core$Maybe$Just(cursor + 1) : $elm$core$Maybe$Nothing;
 										}),
 									model.source)
 							}),
@@ -7544,14 +8134,8 @@ var $author$project$Maple$Editor$update = F2(
 									$author$project$Zipper$cursorPrevious,
 									$author$project$Maple$Editor$tokenEnd,
 									F2(
-										function (cursor, token) {
-											if (token.$ === 'Hole') {
-												var str = token.a;
-												return (cursor > 0) ? $elm$core$Maybe$Just(cursor - 1) : $elm$core$Maybe$Nothing;
-											} else {
-												var raw = token.a;
-												return $elm$core$Maybe$Nothing;
-											}
+										function (cursor, _v5) {
+											return (cursor > 0) ? $elm$core$Maybe$Just(cursor - 1) : $elm$core$Maybe$Nothing;
 										}),
 									model.source)
 							}),
@@ -7566,53 +8150,36 @@ var $author$project$Maple$Editor$update = F2(
 							source: A2(
 								$elm$core$Maybe$withDefault,
 								$author$project$Zipper$singleton(
-									$author$project$Maple$Editor$Hole('')),
+									A2($author$project$Maple$Editor$Token, '', $elm$core$Maybe$Nothing)),
 								A3(
 									$author$project$Zipper$modify,
 									$author$project$Maple$Editor$tokenEnd,
 									F2(
-										function (cursor, token) {
-											if (token.$ === 'Hole') {
-												var prevStr = token.a;
-												if (str === ' ') {
-													return A3(
-														$author$project$Zipper$Insert,
-														function () {
-															var _v7 = $elm$core$String$toFloat(prevStr);
-															if (_v7.$ === 'Nothing') {
-																return $author$project$Maple$Editor$Hole(prevStr);
-															} else {
-																var f = _v7.a;
-																return A2(
-																	$author$project$Maple$Editor$Number,
-																	prevStr,
-																	$elm$core$Result$Ok(f));
-															}
-														}(),
-														$author$project$Maple$Editor$Hole(''),
-														_List_Nil);
-												} else {
-													var before = A3($elm$core$String$slice, 0, cursor, prevStr);
-													var after = A3(
-														$elm$core$String$slice,
-														cursor,
-														$elm$core$String$length(prevStr),
-														prevStr);
-													return A2(
-														$author$project$Zipper$Change,
-														cursor + 1,
-														$author$project$Maple$Editor$Hole(
-															_Utils_ap(
-																before,
-																_Utils_ap(str, after))));
-												}
+										function (cursor, _v6) {
+											var raw = _v6.a;
+											var err = _v6.b;
+											if (str === ' ') {
+												return A3(
+													$author$project$Zipper$Insert,
+													A2($author$project$Maple$Editor$Token, raw, err),
+													A2($author$project$Maple$Editor$Token, '', $elm$core$Maybe$Nothing),
+													_List_Nil);
 											} else {
-												var raw = token.a;
-												var fRes = token.b;
+												var before = A3($elm$core$String$slice, 0, cursor, raw);
+												var after = A3(
+													$elm$core$String$slice,
+													cursor,
+													$elm$core$String$length(raw),
+													raw);
 												return A2(
 													$author$project$Zipper$Change,
-													cursor,
-													A2($author$project$Maple$Editor$Number, raw, fRes));
+													cursor + 1,
+													A2(
+														$author$project$Maple$Editor$Token,
+														_Utils_ap(
+															before,
+															_Utils_ap(str, after)),
+														err));
 											}
 										}),
 									model.source))
@@ -7622,18 +8189,29 @@ var $author$project$Maple$Editor$update = F2(
 	});
 var $author$project$Main$update = F2(
 	function (msg, model) {
-		if (msg.$ === 'NoOp') {
-			return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-		} else {
-			var editorMsg = msg.a;
-			var _v1 = A2($author$project$Maple$Editor$update, editorMsg, model.editor);
-			var editor = _v1.a;
-			var editorCmd = _v1.b;
-			return _Utils_Tuple2(
-				_Utils_update(
-					model,
-					{editor: editor}),
-				A2($elm$core$Platform$Cmd$map, $author$project$Main$EditorMsg, editorCmd));
+		switch (msg.$) {
+			case 'NoOp':
+				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+			case 'EditorMsg':
+				var editorMsg = msg.a;
+				var _v1 = A2($author$project$Maple$Editor$update, editorMsg, model.editor);
+				var editor = _v1.a;
+				var editorCmd = _v1.b;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{editor: editor}),
+					A2($elm$core$Platform$Cmd$map, $author$project$Main$EditorMsg, editorCmd));
+			default:
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							output: $author$project$Extra$Result$fromList(
+								$author$project$Maple$parse(
+									$author$project$Maple$Editor$tokens(model.editor)))
+						}),
+					$elm$core$Platform$Cmd$none);
 		}
 	});
 var $mdgriffith$elm_ui$Internal$Style$classes = {above: 'a', active: 'atv', alignBottom: 'ab', alignCenterX: 'cx', alignCenterY: 'cy', alignContainerBottom: 'acb', alignContainerCenterX: 'accx', alignContainerCenterY: 'accy', alignContainerRight: 'acr', alignLeft: 'al', alignRight: 'ar', alignTop: 'at', alignedHorizontally: 'ah', alignedVertically: 'av', any: 's', behind: 'bh', below: 'b', bold: 'w7', borderDashed: 'bd', borderDotted: 'bdt', borderNone: 'bn', borderSolid: 'bs', capturePointerEvents: 'cpe', clip: 'cp', clipX: 'cpx', clipY: 'cpy', column: 'c', container: 'ctr', contentBottom: 'cb', contentCenterX: 'ccx', contentCenterY: 'ccy', contentLeft: 'cl', contentRight: 'cr', contentTop: 'ct', cursorPointer: 'cptr', cursorText: 'ctxt', focus: 'fcs', focusedWithin: 'focus-within', fullSize: 'fs', grid: 'g', hasBehind: 'hbh', heightContent: 'hc', heightExact: 'he', heightFill: 'hf', heightFillPortion: 'hfp', hover: 'hv', imageContainer: 'ic', inFront: 'fr', inputLabel: 'lbl', inputMultiline: 'iml', inputMultilineFiller: 'imlf', inputMultilineParent: 'imlp', inputMultilineWrapper: 'implw', inputText: 'it', italic: 'i', link: 'lnk', nearby: 'nb', noTextSelection: 'notxt', onLeft: 'ol', onRight: 'or', opaque: 'oq', overflowHidden: 'oh', page: 'pg', paragraph: 'p', passPointerEvents: 'ppe', root: 'ui', row: 'r', scrollbars: 'sb', scrollbarsX: 'sbx', scrollbarsY: 'sby', seButton: 'sbt', single: 'e', sizeByCapital: 'cap', spaceEvenly: 'sev', strike: 'sk', text: 't', textCenter: 'tc', textExtraBold: 'w8', textExtraLight: 'w2', textHeavy: 'w9', textJustify: 'tj', textJustifyAll: 'tja', textLeft: 'tl', textLight: 'w3', textMedium: 'w5', textNormalWeight: 'w4', textRight: 'tr', textSemiBold: 'w6', textThin: 'w1', textUnitalicized: 'tun', transition: 'ts', transparent: 'clr', underline: 'u', widthContent: 'wc', widthExact: 'we', widthFill: 'wf', widthFillPortion: 'wfp', wrapped: 'wrp'};
@@ -10465,9 +11043,6 @@ var $elm$core$Basics$min = F2(
 	function (x, y) {
 		return (_Utils_cmp(x, y) < 0) ? x : y;
 	});
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
 var $mdgriffith$elm_ui$Internal$Model$renderProps = F3(
 	function (force, _v0, existing) {
 		var key = _v0.a;
@@ -13521,18 +14096,171 @@ var $mdgriffith$elm_ui$Element$layoutWith = F3(
 	});
 var $mdgriffith$elm_ui$Element$layout = $mdgriffith$elm_ui$Element$layoutWith(
 	{options: _List_Nil});
-var $mdgriffith$elm_ui$Internal$Model$AsColumn = {$: 'AsColumn'};
-var $mdgriffith$elm_ui$Internal$Model$asColumn = $mdgriffith$elm_ui$Internal$Model$AsColumn;
+var $author$project$Main$ExecuteCode = {$: 'ExecuteCode'};
+var $mdgriffith$elm_ui$Internal$Model$Button = {$: 'Button'};
+var $mdgriffith$elm_ui$Internal$Model$Describe = function (a) {
+	return {$: 'Describe', a: a};
+};
+var $elm$json$Json$Encode$bool = _Json_wrap;
+var $elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$bool(bool));
+	});
+var $elm$html$Html$Attributes$disabled = $elm$html$Html$Attributes$boolProperty('disabled');
+var $mdgriffith$elm_ui$Element$Input$enter = 'Enter';
+var $mdgriffith$elm_ui$Internal$Model$NoAttribute = {$: 'NoAttribute'};
+var $mdgriffith$elm_ui$Element$Input$hasFocusStyle = function (attr) {
+	if (((attr.$ === 'StyleClass') && (attr.b.$ === 'PseudoSelector')) && (attr.b.a.$ === 'Focus')) {
+		var _v1 = attr.b;
+		var _v2 = _v1.a;
+		return true;
+	} else {
+		return false;
+	}
+};
+var $mdgriffith$elm_ui$Element$Input$focusDefault = function (attrs) {
+	return A2($elm$core$List$any, $mdgriffith$elm_ui$Element$Input$hasFocusStyle, attrs) ? $mdgriffith$elm_ui$Internal$Model$NoAttribute : $mdgriffith$elm_ui$Internal$Model$htmlClass('focusable');
+};
 var $mdgriffith$elm_ui$Internal$Model$Height = function (a) {
 	return {$: 'Height', a: a};
 };
 var $mdgriffith$elm_ui$Element$height = $mdgriffith$elm_ui$Internal$Model$Height;
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
+var $mdgriffith$elm_ui$Element$Events$onClick = A2($elm$core$Basics$composeL, $mdgriffith$elm_ui$Internal$Model$Attr, $elm$html$Html$Events$onClick);
+var $elm$json$Json$Decode$andThen = _Json_andThen;
+var $elm$json$Json$Decode$fail = _Json_fail;
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$virtual_dom$VirtualDom$MayPreventDefault = function (a) {
+	return {$: 'MayPreventDefault', a: a};
+};
+var $elm$html$Html$Events$preventDefaultOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayPreventDefault(decoder));
+	});
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $mdgriffith$elm_ui$Element$Input$onKeyLookup = function (lookup) {
+	var decode = function (code) {
+		var _v0 = lookup(code);
+		if (_v0.$ === 'Nothing') {
+			return $elm$json$Json$Decode$fail('No key matched');
+		} else {
+			var msg = _v0.a;
+			return $elm$json$Json$Decode$succeed(msg);
+		}
+	};
+	var isKey = A2(
+		$elm$json$Json$Decode$andThen,
+		decode,
+		A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string));
+	return $mdgriffith$elm_ui$Internal$Model$Attr(
+		A2(
+			$elm$html$Html$Events$preventDefaultOn,
+			'keydown',
+			A2(
+				$elm$json$Json$Decode$map,
+				function (fired) {
+					return _Utils_Tuple2(fired, true);
+				},
+				isKey)));
+};
+var $mdgriffith$elm_ui$Internal$Model$Class = F2(
+	function (a, b) {
+		return {$: 'Class', a: a, b: b};
+	});
+var $mdgriffith$elm_ui$Internal$Flag$cursor = $mdgriffith$elm_ui$Internal$Flag$flag(21);
+var $mdgriffith$elm_ui$Element$pointer = A2($mdgriffith$elm_ui$Internal$Model$Class, $mdgriffith$elm_ui$Internal$Flag$cursor, $mdgriffith$elm_ui$Internal$Style$classes.cursorPointer);
 var $mdgriffith$elm_ui$Internal$Model$Content = {$: 'Content'};
 var $mdgriffith$elm_ui$Element$shrink = $mdgriffith$elm_ui$Internal$Model$Content;
+var $mdgriffith$elm_ui$Element$Input$space = ' ';
+var $elm$html$Html$Attributes$tabindex = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'tabIndex',
+		$elm$core$String$fromInt(n));
+};
 var $mdgriffith$elm_ui$Internal$Model$Width = function (a) {
 	return {$: 'Width', a: a};
 };
 var $mdgriffith$elm_ui$Element$width = $mdgriffith$elm_ui$Internal$Model$Width;
+var $mdgriffith$elm_ui$Element$Input$button = F2(
+	function (attrs, _v0) {
+		var onPress = _v0.onPress;
+		var label = _v0.label;
+		return A4(
+			$mdgriffith$elm_ui$Internal$Model$element,
+			$mdgriffith$elm_ui$Internal$Model$asEl,
+			$mdgriffith$elm_ui$Internal$Model$div,
+			A2(
+				$elm$core$List$cons,
+				$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$shrink),
+				A2(
+					$elm$core$List$cons,
+					$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$shrink),
+					A2(
+						$elm$core$List$cons,
+						$mdgriffith$elm_ui$Internal$Model$htmlClass($mdgriffith$elm_ui$Internal$Style$classes.contentCenterX + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.contentCenterY + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.seButton + (' ' + $mdgriffith$elm_ui$Internal$Style$classes.noTextSelection)))))),
+						A2(
+							$elm$core$List$cons,
+							$mdgriffith$elm_ui$Element$pointer,
+							A2(
+								$elm$core$List$cons,
+								$mdgriffith$elm_ui$Element$Input$focusDefault(attrs),
+								A2(
+									$elm$core$List$cons,
+									$mdgriffith$elm_ui$Internal$Model$Describe($mdgriffith$elm_ui$Internal$Model$Button),
+									A2(
+										$elm$core$List$cons,
+										$mdgriffith$elm_ui$Internal$Model$Attr(
+											$elm$html$Html$Attributes$tabindex(0)),
+										function () {
+											if (onPress.$ === 'Nothing') {
+												return A2(
+													$elm$core$List$cons,
+													$mdgriffith$elm_ui$Internal$Model$Attr(
+														$elm$html$Html$Attributes$disabled(true)),
+													attrs);
+											} else {
+												var msg = onPress.a;
+												return A2(
+													$elm$core$List$cons,
+													$mdgriffith$elm_ui$Element$Events$onClick(msg),
+													A2(
+														$elm$core$List$cons,
+														$mdgriffith$elm_ui$Element$Input$onKeyLookup(
+															function (code) {
+																return _Utils_eq(code, $mdgriffith$elm_ui$Element$Input$enter) ? $elm$core$Maybe$Just(msg) : (_Utils_eq(code, $mdgriffith$elm_ui$Element$Input$space) ? $elm$core$Maybe$Just(msg) : $elm$core$Maybe$Nothing);
+															}),
+														attrs));
+											}
+										}()))))))),
+			$mdgriffith$elm_ui$Internal$Model$Unkeyed(
+				_List_fromArray(
+					[label])));
+	});
+var $mdgriffith$elm_ui$Internal$Model$AsColumn = {$: 'AsColumn'};
+var $mdgriffith$elm_ui$Internal$Model$asColumn = $mdgriffith$elm_ui$Internal$Model$AsColumn;
 var $mdgriffith$elm_ui$Element$column = F2(
 	function (attrs, children) {
 		return A4(
@@ -13572,10 +14300,6 @@ var $mdgriffith$elm_ui$Internal$Model$Fill = function (a) {
 	return {$: 'Fill', a: a};
 };
 var $mdgriffith$elm_ui$Element$fill = $mdgriffith$elm_ui$Internal$Model$Fill(1);
-var $elm$core$Basics$always = F2(
-	function (a, _v0) {
-		return a;
-	});
 var $mdgriffith$elm_ui$Internal$Model$unstyled = A2($elm$core$Basics$composeL, $mdgriffith$elm_ui$Internal$Model$Unstyled, $elm$core$Basics$always);
 var $mdgriffith$elm_ui$Element$html = $mdgriffith$elm_ui$Internal$Model$unstyled;
 var $elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
@@ -13598,26 +14322,37 @@ var $mdgriffith$elm_ui$Element$padding = function (x) {
 			f,
 			f));
 };
+var $mdgriffith$elm_ui$Internal$Model$SpacingStyle = F3(
+	function (a, b, c) {
+		return {$: 'SpacingStyle', a: a, b: b, c: c};
+	});
+var $mdgriffith$elm_ui$Internal$Flag$spacing = $mdgriffith$elm_ui$Internal$Flag$flag(3);
+var $mdgriffith$elm_ui$Internal$Model$spacingName = F2(
+	function (x, y) {
+		return 'spacing-' + ($elm$core$String$fromInt(x) + ('-' + $elm$core$String$fromInt(y)));
+	});
+var $mdgriffith$elm_ui$Element$spacing = function (x) {
+	return A2(
+		$mdgriffith$elm_ui$Internal$Model$StyleClass,
+		$mdgriffith$elm_ui$Internal$Flag$spacing,
+		A3(
+			$mdgriffith$elm_ui$Internal$Model$SpacingStyle,
+			A2($mdgriffith$elm_ui$Internal$Model$spacingName, x, x),
+			x,
+			x));
+};
 var $mdgriffith$elm_ui$Internal$Model$Text = function (a) {
 	return {$: 'Text', a: a};
 };
 var $mdgriffith$elm_ui$Element$text = function (content) {
 	return $mdgriffith$elm_ui$Internal$Model$Text(content);
 };
+var $elm$core$Debug$toString = _Debug_toString;
 var $author$project$Maple$Editor$FocusEditor = {$: 'FocusEditor'};
-var $elm$json$Json$Encode$bool = _Json_wrap;
-var $elm$html$Html$Attributes$boolProperty = F2(
-	function (key, bool) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			$elm$json$Json$Encode$bool(bool));
-	});
 var $elm$html$Html$Attributes$contenteditable = $elm$html$Html$Attributes$boolProperty('contentEditable');
 var $elm$virtual_dom$VirtualDom$Custom = function (a) {
 	return {$: 'Custom', a: a};
 };
-var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
 var $elm$html$Html$Events$custom = F2(
 	function (event, decoder) {
 		return A2(
@@ -13628,8 +14363,6 @@ var $elm$html$Html$Events$custom = F2(
 var $author$project$Maple$Editor$GotInput = function (a) {
 	return {$: 'GotInput', a: a};
 };
-var $elm$json$Json$Decode$field = _Json_decodeField;
-var $elm$json$Json$Decode$string = _Json_decodeString;
 var $author$project$Maple$Editor$decodeInput = A2(
 	$elm$json$Json$Decode$map,
 	function (data) {
@@ -13645,8 +14378,6 @@ var $author$project$Maple$Editor$Move = function (a) {
 	return {$: 'Move', a: a};
 };
 var $author$project$Maple$Editor$Right = {$: 'Right'};
-var $elm$json$Json$Decode$andThen = _Json_andThen;
-var $elm$json$Json$Decode$fail = _Json_fail;
 var $elm$core$Debug$log = _Debug_log;
 var $author$project$Maple$Editor$decodeKeyDown = A2(
 	$elm$json$Json$Decode$map,
@@ -13671,124 +14402,74 @@ var $author$project$Maple$Editor$decodeKeyDown = A2(
 			}
 		},
 		A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string)));
-var $author$project$Zipper$foldr = F3(
-	function (fn, b, _v0) {
-		var _v1 = _v0.a;
-		var before = _v1.a;
-		var _v2 = _v1.b;
-		var cursor = _v2.a;
-		var a = _v2.b;
-		var after = _v1.c;
-		return A3(
-			$elm$core$List$foldl,
-			fn($elm$core$Maybe$Nothing),
-			A3(
-				fn,
-				$elm$core$Maybe$Just(cursor),
-				a,
-				A3(
-					$elm$core$List$foldr,
-					fn($elm$core$Maybe$Nothing),
-					b,
-					after)),
-			before);
-	});
 var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
-var $elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var $elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var $elm$html$Html$Events$onClick = function (msg) {
-	return A2(
-		$elm$html$Html$Events$on,
-		'click',
-		$elm$json$Json$Decode$succeed(msg));
-};
 var $elm$html$Html$textarea = _VirtualDom_node('textarea');
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
+var $elm$html$Html$Attributes$classList = function (classes) {
+	return $elm$html$Html$Attributes$class(
+		A2(
+			$elm$core$String$join,
+			' ',
+			A2(
+				$elm$core$List$map,
+				$elm$core$Tuple$first,
+				A2($elm$core$List$filter, $elm$core$Tuple$second, classes))));
+};
 var $elm$html$Html$span = _VirtualDom_node('span');
 var $author$project$Maple$Editor$viewToken = F2(
-	function (maybeCursor, token) {
-		if (token.$ === 'Hole') {
-			var str = token.a;
-			return A2(
-				$elm$html$Html$span,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('token hole')
-					]),
-				function () {
-					var _v1 = A2($elm$core$Debug$log, 'curs?', maybeCursor);
-					if (_v1.$ === 'Nothing') {
-						return _List_fromArray(
-							[
-								$elm$html$Html$text(str)
-							]);
-					} else {
-						var cursor = _v1.a;
-						return _List_fromArray(
-							[
-								$elm$html$Html$text(
-								A3($elm$core$String$slice, 0, cursor, str)),
-								A2(
-								$elm$html$Html$div,
-								_List_fromArray(
-									[
-										$elm$html$Html$Attributes$class('cursor')
-									]),
-								_List_Nil),
-								$elm$html$Html$text(
-								A3(
-									$elm$core$String$slice,
-									cursor,
-									$elm$core$String$length(str),
-									str))
-							]);
-					}
-				}());
-		} else {
-			var raw = token.a;
-			return A2(
-				$elm$html$Html$span,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('token number')
-					]),
-				function () {
-					if (maybeCursor.$ === 'Nothing') {
-						return _List_fromArray(
-							[
-								$elm$html$Html$text(raw)
-							]);
-					} else {
-						var cursor = maybeCursor.a;
-						return _List_fromArray(
-							[
-								$elm$html$Html$text(
-								A3($elm$core$String$slice, 0, cursor, raw)),
-								A2(
-								$elm$html$Html$div,
-								_List_fromArray(
-									[
-										$elm$html$Html$Attributes$class('cursor')
-									]),
-								_List_Nil),
-								$elm$html$Html$text(
-								A3(
-									$elm$core$String$slice,
-									cursor,
-									$elm$core$String$length(raw),
-									raw))
-							]);
-					}
-				}());
-		}
+	function (maybeCursor, _v0) {
+		var raw = _v0.a;
+		var err = _v0.b;
+		return A2(
+			$elm$html$Html$span,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$classList(
+					_List_fromArray(
+						[
+							_Utils_Tuple2('token', true),
+							_Utils_Tuple2(
+							'hole',
+							$elm$core$String$isEmpty(raw)),
+							_Utils_Tuple2(
+							'error',
+							function () {
+								if (err.$ === 'Nothing') {
+									return false;
+								} else {
+									return true;
+								}
+							}())
+						]))
+				]),
+			function () {
+				if (maybeCursor.$ === 'Nothing') {
+					return _List_fromArray(
+						[
+							$elm$html$Html$text(raw)
+						]);
+				} else {
+					var cursor = maybeCursor.a;
+					return _List_fromArray(
+						[
+							$elm$html$Html$text(
+							A3($elm$core$String$slice, 0, cursor, raw)),
+							A2(
+							$elm$html$Html$div,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('cursor')
+								]),
+							_List_Nil),
+							$elm$html$Html$text(
+							A3(
+								$elm$core$String$slice,
+								cursor,
+								$elm$core$String$length(raw),
+								raw))
+						]);
+				}
+			}());
 	});
 var $author$project$Maple$Editor$view = function (model) {
 	return A2(
@@ -13835,6 +14516,7 @@ var $author$project$Main$viewModel = function (model) {
 		_List_fromArray(
 			[
 				$mdgriffith$elm_ui$Element$padding(16),
+				$mdgriffith$elm_ui$Element$spacing(16),
 				$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
 			]),
 		_List_fromArray(
@@ -13850,7 +14532,16 @@ var $author$project$Main$viewModel = function (model) {
 					A2(
 						$elm$html$Html$map,
 						$author$project$Main$EditorMsg,
-						$author$project$Maple$Editor$view(model.editor))))
+						$author$project$Maple$Editor$view(model.editor)))),
+				A2(
+				$mdgriffith$elm_ui$Element$Input$button,
+				_List_Nil,
+				{
+					label: $mdgriffith$elm_ui$Element$text('Run'),
+					onPress: $elm$core$Maybe$Just($author$project$Main$ExecuteCode)
+				}),
+				$mdgriffith$elm_ui$Element$text(
+				$elm$core$Debug$toString(model.output))
 			]));
 };
 var $author$project$Main$view = function (model) {

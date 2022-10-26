@@ -6,6 +6,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Json.Decode exposing (Decoder)
+import Parser exposing ((|.), (|=), Parser)
 import Task
 import Zipper exposing (Modification(..), Zipper)
 
@@ -20,14 +21,21 @@ type alias Line =
 
 
 type Token
-    = Hole String
-    | Number String (Result String Float)
+    = Token String (Maybe String)
+
+
+tokens : Model -> List String
+tokens model =
+    Zipper.foldr
+        (\_ (Token raw _) result -> raw :: result)
+        []
+        model.source
 
 
 init : ( Model, Cmd Msg )
 init =
     ( { source =
-            Hole ""
+            Token "" Nothing
                 |> Zipper.singleton
       }
     , Browser.Dom.focus "maple-editor"
@@ -63,17 +71,12 @@ update msg model =
             ( { model
                 | source =
                     Zipper.cursorNext
-                        (\cursor token ->
-                            case token of
-                                Hole str ->
-                                    if cursor < String.length str then
-                                        Just (cursor + 1)
+                        (\cursor (Token raw _) ->
+                            if cursor < String.length raw then
+                                Just (cursor + 1)
 
-                                    else
-                                        Nothing
-
-                                Number raw _ ->
-                                    Nothing
+                            else
+                                Nothing
                         )
                         model.source
               }
@@ -85,17 +88,12 @@ update msg model =
                 | source =
                     Zipper.cursorPrevious
                         tokenEnd
-                        (\cursor token ->
-                            case token of
-                                Hole str ->
-                                    if cursor > 0 then
-                                        Just (cursor - 1)
+                        (\cursor (Token _ _) ->
+                            if cursor > 0 then
+                                Just (cursor - 1)
 
-                                    else
-                                        Nothing
-
-                                Number raw _ ->
-                                    Nothing
+                            else
+                                Nothing
                         )
                         model.source
               }
@@ -107,49 +105,35 @@ update msg model =
                 | source =
                     Zipper.modify
                         tokenEnd
-                        (\cursor token ->
-                            case token of
-                                Hole prevStr ->
-                                    if str == " " then
-                                        Insert
-                                            (case String.toFloat prevStr of
-                                                Nothing ->
-                                                    Hole prevStr
+                        (\cursor (Token raw err) ->
+                            if str == " " then
+                                Insert
+                                    (Token raw err)
+                                    (Token "" Nothing)
+                                    []
 
-                                                Just f ->
-                                                    Number prevStr (Ok f)
-                                            )
-                                            (Hole "")
-                                            []
+                            else
+                                let
+                                    before : String
+                                    before =
+                                        String.slice 0 cursor raw
 
-                                    else
-                                        let
-                                            before =
-                                                String.slice 0 cursor prevStr
-
-                                            after =
-                                                String.slice cursor (String.length prevStr) prevStr
-                                        in
-                                        Change (cursor + 1) (Hole (before ++ str ++ after))
-
-                                Number raw fRes ->
-                                    Change cursor (Number raw fRes)
+                                    after : String
+                                    after =
+                                        String.slice cursor (String.length raw) raw
+                                in
+                                Change (cursor + 1) (Token (before ++ str ++ after) err)
                         )
                         model.source
-                        |> Maybe.withDefault (Zipper.singleton (Hole ""))
+                        |> Maybe.withDefault (Zipper.singleton (Token "" Nothing))
               }
             , Cmd.none
             )
 
 
 tokenEnd : Token -> Int
-tokenEnd token =
-    case token of
-        Hole str ->
-            String.length str
-
-        Number raw _ ->
-            String.length raw
+tokenEnd (Token raw _) =
+    String.length raw
 
 
 view : Model -> Html Msg
@@ -211,32 +195,28 @@ decodeInput =
 
 
 viewToken : Maybe Int -> Token -> Html Msg
-viewToken maybeCursor token =
-    case token of
-        Hole str ->
-            Html.span
-                [ Html.Attributes.class "token hole" ]
-                (case Debug.log "curs?" maybeCursor of
+viewToken maybeCursor (Token raw err) =
+    Html.span
+        [ Html.Attributes.classList
+            [ ( "token", True )
+            , ( "hole", String.isEmpty raw )
+            , ( "error"
+              , case err of
                     Nothing ->
-                        [ Html.text str ]
+                        False
 
-                    Just cursor ->
-                        [ Html.text (String.slice 0 cursor str)
-                        , Html.div [ Html.Attributes.class "cursor" ] []
-                        , Html.text (String.slice cursor (String.length str) str)
-                        ]
-                )
+                    Just _ ->
+                        True
+              )
+            ]
+        ]
+        (case maybeCursor of
+            Nothing ->
+                [ Html.text raw ]
 
-        Number raw _ ->
-            Html.span
-                [ Html.Attributes.class "token number" ]
-                (case maybeCursor of
-                    Nothing ->
-                        [ Html.text raw ]
-
-                    Just cursor ->
-                        [ Html.text (String.slice 0 cursor raw)
-                        , Html.div [ Html.Attributes.class "cursor" ] []
-                        , Html.text (String.slice cursor (String.length raw) raw)
-                        ]
-                )
+            Just cursor ->
+                [ Html.text (String.slice 0 cursor raw)
+                , Html.div [ Html.Attributes.class "cursor" ] []
+                , Html.text (String.slice cursor (String.length raw) raw)
+                ]
+        )

@@ -16,5 +16,7 @@ mkShell {
     elmPackages.elm-review
     nodejs-18_x
     git
+    zig
+    zls
   ];
 }

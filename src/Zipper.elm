@@ -90,7 +90,7 @@ cursorNext fn ((Zipper ( before, ( oldCursor, oldA ), after )) as zip) =
                     zip
 
                 a :: rest ->
-                    Zipper ( before, ( 0, a ), rest )
+                    Zipper ( oldA :: before, ( 0, a ), rest )
 
 
 focusPrevious : (a -> Int) -> Zipper a -> Zipper a
