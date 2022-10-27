@@ -4,7 +4,8 @@
 /* syscall write(int fd, const void *buf, size_t count) */
 _start: 
     mov    X0, #1         // 1 = StdOut
-    adr    X1, helloworld     // string to print
+    adrp   X1, helloworld@PAGE     // string to print
+    add    X1, X1, helloworld@PAGEOFF
     mov    X2, helloworld_len // length of our string
     mov    X16, #4            // Unix write system call
     svc    #0x80              // Call kernel to output the string
@@ -14,5 +15,6 @@ _start:
     mov     X16, #1           // System call number 1 terminates this program
     svc     #0x80             // Call kernel to terminate the program
 
+.data
 helloworld:      .ascii  "Hello, ARM64!\n"
 helloworld_len = . - helloworld
