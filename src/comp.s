@@ -1,6 +1,12 @@
 .global _start
 .align 2
 
+// Gets the address of (writable) memory in the data section
+.macro dadr Xn, name
+    adrp    \Xn, \name@page
+    add     \Xn, \Xn, \name@pageoff
+.endm
+
 _start:
     mov     X0, #'P'
     mov     X1, #'O'
@@ -13,9 +19,10 @@ _start:
     mov     X8, #'W'
     mov     X9, #'Q'
 
-    adrp    X10, outstr@PAGE // load `outstr`
-    add     X10, X10, outstr@PAGEOFF
-    //strb    W9, [X10]
+    //adrp    X10, outstr@PAGE // load `outstr`
+    //add     X10, X10, outstr@PAGEOFF
+    dadr    X10, outstr
+    //strb    W9, [X10, #1]
     //str     X1, [X10, #1]    // load the value of X1 into the address of X10
     //add     X10, X10, #1     // add 1 to the value in X10
     //str     X5, [X10]    // load the value of X5 into the address of X10
@@ -37,7 +44,7 @@ _start:
     svc     #0x80
 
 //outstr:     .ascii  "     \n"
-outstr:     .ascii  "OTTER\n"
+outstr:     .ascii  "WORLD\n"
 
 
 
