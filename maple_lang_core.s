@@ -52,3 +52,40 @@
     mov     X16, #1     // system call, (1) terminates program
     svc     #0x80
 .endm
+
+
+// Calculates `base` to the power of `expo`
+//
+// X0: base
+// X1: power
+//
+// Labels
+//  1: expo is 0, return 1
+//  2: expo is positive, calculate
+//  4: return
+//
+// Output
+//  X0: result
+.macro power_int base, expo
+    mov     X1, \expo
+    cmp     X1, #0
+    beq      1f
+    mov     X0, \base
+    mov     X2, \base
+    bgt     2f
+    blt     3f
+
+1:
+    mov     X0, #1
+    b       3f
+
+2:
+    cmp     X1, #1
+    ble     3f
+    mul     X0, X0, X2
+    sub     X1, X1, #1
+    b       2b
+
+3:
+
+.endm

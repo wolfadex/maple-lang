@@ -4,47 +4,61 @@
 .align 2
 
 
-// Registers
-//      X0: input string address
-//      X1: tmp byte read
-//      X2: matched letere to write
-
-
+.equ    basenum, 209867295
 
 _start:
-    dadr    X0, instr
 
-loop:
-    ldrb    W1, [X0]
-    cmp     X1, #0          // see if we have a null/is at the end
-    beq     exit_label      // if equal, we've hit the end of the string
-    cmp     X1, #'A'
-    mov      X2, #'T'   //moveq
-    beq     write
-    cmp     X1, #'T'
-    mov      X2, #'A'   //moveq
-    beq     write
-    cmp     X1, #'C'
-    mov      X2, #'G'   //moveq
-    beq     write
-    //cmp     X1, #'G'      // assume we have a 'G' here
-    mov      X2, #'C'   //moveq
-    beq     write
+    // load output string
+    dadr    X4, outstr
+    // load the number to print
+    ldr     X5, =basenum
+    // initial power of ten
+    mov     X7, #9
+    // initial loop counter for current digit
+    mov     X8, #0
 
-write:
-    strb    W2, [X0], #1
-    b       loop
+findstart:
+    power_int   #10, X7
+    // move result into X6
+    mov     X6, X0
+    // compare to number being processed
+    cmp     X6, X5
+    ble     finddigit
+    // not found, subtract and try again
+    sub     X7, X7, #1
+    b       findstart
+
+finddigit:
+    cmp     X5, X6
+    blt     write_to_mem
+    add     X8, X8, #1
+    sub     X5, X5, X6
+    b       finddigit
+
+write_to_mem:
+    // add ascii 0 to to our digit
+    add     X8, X8, #'0'
+    strb    W8, [X4], #1
+    
+    sub     X7, X7, #1
+    cmp     X7, #0
+    blt     exit_label
+    power_int       #10, X7
+    mov     X6, X0
+    mov     X8, #0
+    b       finddigit
 
 exit_label:
-    write_null_str instr
+    mov     X8, #'\n'
+    strb    W8, [X4]
 
-    dadr    X0, instr
-    mov     X1, #0x000a     // \n + \0, aka newline + null termininator, 0a == \n, 00 == \0
-    strh    W1, [X0]        // store 2 bytes
-    write_null_str instr
+    mov     X16, #4   // write
+    mov     X0, #1    // to stdout
+    dadr    X1, outstr
+    mov     X2, #11
+    svc     #0x80
 
     exit #0
 
 .data
-instr:      .ascii      "GTATCGATCGATCGATCGATTATATTTTCGACGAGATTTAAATATATATA"
-            .asciz      "TATACGAGAGAATACAGATAGACAGATTA" 
+outstr:     .fill 11 // max output size is 10 char, 11th is for the line ending
