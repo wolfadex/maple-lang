@@ -10,6 +10,6 @@ hello: $(SRC)hello_world.s
 	$(L1) $(DIST)hello_world $(DIST)hello_world.o $(L2)
 
 
-comp: $(SRC)comp.s
+comp: $(SRC)comp.s maple_lang_core.s
 	$(OB) $(DIST)comp.o $(SRC)comp.s
 	$(L1) $(DIST)comp $(DIST)comp.o $(L2)
