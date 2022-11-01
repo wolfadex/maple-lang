@@ -1,4 +1,4 @@
-exports [ main ]
+exports []
 
 # Here are some imports, and a single line comment
 
@@ -8,7 +8,6 @@ imports [ Core ]
 
 this is also a doc comment for the module!
 |#
-
 
 main (+IO):
     #| A doc comment for a definition goes right after the definition label |#

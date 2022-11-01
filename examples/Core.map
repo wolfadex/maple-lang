@@ -1,0 +1,13 @@
+exports [ print_ln ]
+imports []
+
+
+print_ln (String -> +IO):
+    #| Prints a String to the terminal, ending it with a `\n` |#
+    INTERNAL
+
+
+Maybe (a):
+    #| Either `Some`thing or `Nothing`|#
+    Nothing
+    Some (a)
