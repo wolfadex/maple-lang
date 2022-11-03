@@ -68,7 +68,7 @@ type ExpressionName
 
 
 type alias ExpressionDefinition =
-    { type_ : Maybe Type
+    { type_ : Maybe (List Type)
     , expression : Expr
     }
 
@@ -82,6 +82,7 @@ type Type
     | TFunction (List Type) (List Type)
     | TOneOf (List Type)
     | TVariable String
+    | TAny
 
 
 type Expr
@@ -116,7 +117,7 @@ type MapleProblem
     | ExpectedLineComment
     | ExpectedMultilineCommentStart
     | ExpectedMultilineCommentEnd
-    | ExpectingSemiColon
+    | ExpectingColon
     | ExpectingOpeningParen
     | ExpectingClosingParen
     | ExpectingComma
@@ -142,6 +143,7 @@ type MapleProblem
     | ExpectingStringStart
     | ExpectingStringEnd
     | ExpectingDoubleQuoteEscape
+    | ExpectedTypeArrow
 
 
 parse : Maple.Precursor.MapleProgram -> Result String MapleProgram
@@ -245,7 +247,7 @@ parseTypeDefinition =
     Parser.Advanced.succeed TypeDefinition
         |= parseTypeVariables
         |. parseSpacesOrComments
-        |. Parser.Advanced.symbol (Parser.Advanced.Token ":" ExpectingSemiColon)
+        |. Parser.Advanced.symbol (Parser.Advanced.Token ":" ExpectingColon)
         |. parseSpacesOrComments
         |= parseTypeConstructors
         |. parseSpacesOrComments
@@ -351,14 +353,21 @@ parseExprName =
 
 parseExprDefinition =
     Parser.Advanced.succeed ExpressionDefinition
-        |= parseExprType
+        |= Parser.Advanced.oneOf
+            [ Parser.Advanced.succeed Just
+                |= parseExprType
+                |. parseSpacesOrComments
+                |. Parser.Advanced.symbol (Parser.Advanced.Token ":" ExpectingColon)
+            , Parser.Advanced.succeed Nothing
+                |. parseSpacesOrComments
+                |. Parser.Advanced.symbol (Parser.Advanced.Token ":" ExpectingColon)
+            ]
         |. parseSpacesOrComments
-        |. Parser.Advanced.symbol (Parser.Advanced.Token ":" ExpectingSemiColon)
         |= parseExpr
         |. parseSpacesOrComments
 
 
-parseExprType : Parser (Maybe Type)
+parseExprType : Parser (List Type)
 parseExprType =
     -- = TFloat
     -- | TInt
@@ -369,9 +378,27 @@ parseExprType =
     -- | TOneOf (List Type)
     -- | TVariable String
     Pratt.Advanced.expression
-        { oneOf = []
-        , andThenOneOf = []
+        { oneOf =
+            [ parseExprTypeGroup
+            ]
+        , andThenOneOf =
+            [ Pratt.Advanced.infixLeft 10
+                (Parser.Advanced.symbol (Parser.Advanced.Token "->" ExpectedTypeArrow))
+                (\left right -> TFunction [ left ] [ right ])
+            ]
         , spaces = parseSpacesOrComments
+        }
+
+
+parseExprTypeGroup : Parser (List Type)
+parseExprTypeGroup =
+    Parser.Advanced.sequence
+        { start = Parser.Advanced.Token "(" ExpectingOpeningParen
+        , separator = Parser.Advanced.Token "," ExpectingComma
+        , end = Parser.Advanced.Token ")" ExpectingClosingParen
+        , spaces = parseSpacesOrComments
+        , item = parseTypeVariable
+        , trailing = Parser.Advanced.Forbidden
         }
 
 
